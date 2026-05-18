@@ -36,12 +36,16 @@
 
 > **需要校园网**，在成功提示弹出前不要离开或关闭页面。
 
-### Token 获取
+### Token获取说明
+> Token形如 `Bearer [part1].[part2].[part3]`。
 
-1. 打开 [体育信息平台](https://tyxsjpt.seu.edu.cn/h5/#/pages/home/index) 并登录
-2. 按 `F12` 打开开发者工具 → Console
-3. 展开 `request res========` 后面的 object → 找到 `request.headers.token`
-4. 右键复制值（不要复制引号）
+1. 打开 [https://tyxsjpt.seu.edu.cn/h5/#/pages/home/index](https://tyxsjpt.seu.edu.cn/h5/#/pages/home/index) ，登录账号。
+
+2. 按 `F12` (有的电脑是 `Fn + F12` )打开浏览器的开发人员工具，进入 `控制台` ( `console` )。
+
+3. 展开 `request res========` 后面的 `object` ，找到 `request.headers.token` 。
+
+4. 右键复数字符串内容。**注意: 不需要引号!**
 
 ![screenshot-Get-Token](screenshots/get-token.png)
 
