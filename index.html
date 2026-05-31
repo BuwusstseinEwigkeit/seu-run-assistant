@@ -998,10 +998,41 @@
 
         ml_record_exercise_id = "";
 
+        // 设备指纹池：多种真实微信小程序 User-Agent
+        ml_device_fingerprints = [
+            {
+                user_agent: "Mozilla/5.0 (Linux; Android 7.1.2; V2284A Build/N2G47H; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/116.0.0.0 Mobile Safari/537.36 XWEB/1160253 MMWEBSDK/20240301 MMWEBID/4107 MicroMessenger/8.0.48.2580(0x28003036) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64 MiniProgramEnv/android",
+                referer: "https://servicewechat.com/wx5da07e9f6f45cabf/38/page-frame.html"
+            },
+            {
+                user_agent: "Mozilla/5.0 (Linux; Android 13; 22081212C Build/TP1A.220624.014; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/122.0.6261.120 Mobile Safari/537.36 XWEB/1220069 MMWEBSDK/20240501 MMWEBID/5231 MicroMessenger/8.0.50.2701(0x28003237) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64 MiniProgramEnv/android",
+                referer: "https://servicewechat.com/wx5da07e9f6f45cabf/40/page-frame.html"
+            },
+            {
+                user_agent: "Mozilla/5.0 (Linux; Android 14; Pixel 7 Build/AP2A.240605.024; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.6478.71 Mobile Safari/537.36 XWEB/1220069 MMWEBSDK/20240601 MMWEBID/6012 MicroMessenger/8.0.51.2740(0x28003330) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64 MiniProgramEnv/android",
+                referer: "https://servicewechat.com/wx5da07e9f6f45cabf/41/page-frame.html"
+            },
+            {
+                user_agent: "Mozilla/5.0 (Linux; Android 12; SM-G9910 Build/SP1A.210812.016; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/119.0.6045.193 Mobile Safari/537.36 XWEB/1160253 MMWEBSDK/20240301 MMWEBID/4502 MicroMessenger/8.0.48.2580(0x28003036) WeChat/arm64 Weixin NetType/4G Language/zh_CN ABI/arm64 MiniProgramEnv/android",
+                referer: "https://servicewechat.com/wx5da07e9f6f45cabf/38/page-frame.html"
+            },
+            {
+                user_agent: "Mozilla/5.0 (Linux; Android 11; PEEM00 Build/RKQ1.211119.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/111.0.5563.116 Mobile Safari/537.36 XWEB/1160253 MMWEBSDK/20240201 MMWEBID/3892 MicroMessenger/8.0.47.2560(0x28002F36) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64 MiniProgramEnv/android",
+                referer: "https://servicewechat.com/wx5da07e9f6f45cabf/37/page-frame.html"
+            }
+        ];
+
+        // 每次会话随机选一个设备指纹（同一会话内保持一致）
+        function ml_pickRandomFingerprint() {
+            var fp = ml_device_fingerprints[Math.floor(Math.random() * ml_device_fingerprints.length)];
+            return fp;
+        }
+        var ml_current_fingerprint = ml_pickRandomFingerprint();
+
         ml_system_info = {
-            "user_agent": "Mozilla/5.0 (Linux; Android 7.1.2; V2284A Build/N2G47H; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/116.0.0.0 Mobile Safari/537.36 XWEB/1160253 MMWEBSDK/20240301 MMWEBID/4107 MicroMessenger/8.0.48.2580(0x28003036) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64 MiniProgramEnv/android",
+            "user_agent": ml_current_fingerprint.user_agent,
             "miniapp_version": "minappv3.0.1",
-            "referer": "https://servicewechat.com/wx5da07e9f6f45cabf/38/page-frame.html",
+            "referer": ml_current_fingerprint.referer,
             "tenant": "NDEzMjAxMDI4Ng=="
         };
 
@@ -3868,6 +3899,44 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 distanceRetry++;
             }
 
+            // ---- GPS 真实感后处理 ----
+            // 1) 添加 GPS 精度漂移：模拟手机 GPS 的随机抖动（±2-5米）
+            for (var gi = 0; gi < resampled.length; gi++) {
+                // GPS 漂移量：2-5米 ≈ 0.000018-0.000045度
+                var driftMagnitude = 0.000018 + Math.random() * 0.000027;
+                var driftAngle = Math.random() * Math.PI * 2;
+                resampled[gi].lat += Math.cos(driftAngle) * driftMagnitude;
+                resampled[gi].lng += Math.sin(driftAngle) * driftMagnitude;
+                // 确保漂移后仍在边界内
+                if (!ml_isPointInPolygon(resampled[gi].lat, resampled[gi].lng, polygon)) {
+                    var fixed = ml_movePointInsidePolygon(resampled[gi].lat, resampled[gi].lng, polygon, polyCenter);
+                    resampled[gi].lat = fixed.lat;
+                    resampled[gi].lng = fixed.lng;
+                }
+            }
+            // 2) 模拟偶尔的短暂停顿（2-4个连续重复点，模拟等红灯/系鞋带）
+            var numPauses = Math.floor(Math.random() * 3); // 0-2 次停顿
+            for (var pi = 0; pi < numPauses; pi++) {
+                var pauseIdx = Math.floor(Math.random() * (resampled.length - 3)) + 1;
+                var pauseDuration = 2 + Math.floor(Math.random() * 3); // 2-4 个点
+                for (var pd = 1; pd < pauseDuration && (pauseIdx + pd) < resampled.length; pd++) {
+                    // 停顿点略有 GPS 飘移但基本不动
+                    resampled[pauseIdx + pd].lat = resampled[pauseIdx].lat + (Math.random() - 0.5) * 0.000005;
+                    resampled[pauseIdx + pd].lng = resampled[pauseIdx].lng + (Math.random() - 0.5) * 0.000005;
+                    if (!ml_isPointInPolygon(resampled[pauseIdx + pd].lat, resampled[pauseIdx + pd].lng, polygon)) {
+                        var pFixed = ml_movePointInsidePolygon(resampled[pauseIdx + pd].lat, resampled[pauseIdx + pd].lng, polygon, polyCenter);
+                        resampled[pauseIdx + pd].lat = pFixed.lat;
+                        resampled[pauseIdx + pd].lng = pFixed.lng;
+                    }
+                }
+            }
+            // 重新计算漂移后的总距离
+            newDist = 0;
+            for (var k = 0; k < resampled.length - 1; k++) {
+                newDist += ml_haversineDistance(resampled[k].lat, resampled[k].lng, resampled[k+1].lat, resampled[k+1].lng);
+            }
+            newDist += ml_haversineDistance(resampled[resampled.length-1].lat, resampled[resampled.length-1].lng, resampled[0].lat, resampled[0].lng);
+
             // 基于实际距离和预设配速计算最终时间
             var distanceKm = newDist / 1000;
             var totalTime = Math.round(distanceKm * paceSecondsPerKm);
@@ -4238,7 +4307,7 @@ async function ml_getRandomTrackForVenue(planId) {
             */
             ml_to_be_checked_token_parts = ml_to_be_checked_token.split(".");
             if(ml_to_be_checked_token_parts.length != 3){
-                console.error("Token must contain three parts, like 'Bearer [part1].[part2].[part3]':\n", {ml_to_be_checked_token});
+                console.error("Token format invalid: expected 3 parts");
                 return false;
             };
             try{
@@ -4247,14 +4316,14 @@ async function ml_getRandomTrackForVenue(planId) {
                 console.log("ml decoded token (first part without Bearer):\n", ml_params1); */
                 ml_decoded_token_part2 = decodeUnicode(ml_to_be_checked_token_parts[1].replace(/-/g, '+').replace(/_/g, '/'));
                 ml_params2 = JSON.parse(ml_decoded_token_part2);
-                console.log("ml decoded token (second part):\n", ml_params2);
+                console.log("ml decoded token (second part): userid=" + (ml_params2.userid || "N/A"));
             }
             catch(e){
-                console.error("This token cannot be decoded:\n", {ml_to_be_checked_token});
+                console.error("Token decode failed");
                 return false;
             };
             if(!("userid" in ml_params2)){
-                console.error("This token does not contain userid field:\n", {ml_to_be_checked_token});
+                console.error("Token missing userid field");
                 return false;
             };
             ml_student_user_id = ml_params2.userid;
@@ -4287,16 +4356,16 @@ async function ml_getRandomTrackForVenue(planId) {
                 }
             });
             const response_json_data = await response.json();
-            console.log("ml_check_token_post_response:\n", response_json_data);
+            console.log("ml_check_token_post_response: code=" + response_json_data.code);
             if (!response.ok) {
                 throw new Error("Network Error");
             }
             if(response_json_data.code == 0) {
-                console.log("Token valid:\n", {ml_to_be_checked_token});
+                console.log("Token valid");
                 return true;
             }
             else{
-                console.error("Token not valid:\n", {ml_to_be_checked_token});
+                console.error("Token not valid");
                 return false;
             }
         };
@@ -4329,7 +4398,7 @@ async function ml_getRandomTrackForVenue(planId) {
                 "credentials": "include"
             });
             const response_json_data = await response.json();
-            console.log("学生完整信息:\n", response_json_data.data);
+            console.log("学生信息已获取");
         }
     </script>
 
@@ -4979,18 +5048,34 @@ async function ml_getRandomTrackForVenue(planId) {
             return responseData;
         }
 
+        // 生成随机照片文件名，模拟真实手机拍照命名
+        function ml_randomPhotoFilename() {
+            var prefixes = ["IMG_", "IMG", "DCIM_", "Photo_", "P", "PXL_"];
+            var prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+            var now = new Date();
+            var ts = now.getFullYear().toString() +
+                (now.getMonth()+1).toString().padStart(2,'0') +
+                now.getDate().toString().padStart(2,'0') + "_" +
+                now.getHours().toString().padStart(2,'0') +
+                now.getMinutes().toString().padStart(2,'0') +
+                now.getSeconds().toString().padStart(2,'0');
+            var rand = Math.floor(Math.random() * 9000 + 1000);
+            return prefix + ts + "_" + rand + ".jpg";
+        }
+
         // 上传图片(开始1、结束2通用)
         async function ml_upload_image(ml_api_type) {
             const ml_image_data = new FormData();
             let ml_api_name = "";
+            var photoName = ml_randomPhotoFilename();
 
             // ml_api_type = 1: start; 2: end
             if(ml_api_type == 1){
-                document.getElementById("input-image_start").files.length > 0 ? ml_image_data.append("file", new File([document.getElementById("input-image_start").files[0]], "1.jpg", {type: document.getElementById("input-image_start").files[0].type})) : null;
+                document.getElementById("input-image_start").files.length > 0 ? ml_image_data.append("file", new File([document.getElementById("input-image_start").files[0]], photoName, {type: document.getElementById("input-image_start").files[0].type})) : null;
                 ml_api_name = "uploadRecordImage";
             }
             else{
-                document.getElementById("input-image_end").files.length > 0 ? ml_image_data.append("file", new File([document.getElementById("input-image_end").files[0]], "1.jpg", {type: document.getElementById("input-image_end").files[0].type})) : null;
+                document.getElementById("input-image_end").files.length > 0 ? ml_image_data.append("file", new File([document.getElementById("input-image_end").files[0]], photoName, {type: document.getElementById("input-image_end").files[0].type})) : null;
                 ml_api_name = "uploadRecordImage2";
             }
 
@@ -5023,6 +5108,12 @@ async function ml_getRandomTrackForVenue(planId) {
             // 需要先上传开始图片
             ml_start_image_url = await ml_upload_image(1);
 
+            // 开始记录带前几个轨迹点（模拟刚开跑时的状态，真实客户端不会一开始就有完整轨迹）
+            var startTrackPoints = [];
+            if (ml_student_choose_route_data.track && ml_student_choose_route_data.track.length > 0) {
+                var startSliceLen = 3 + Math.floor(Math.random() * 3); // 3-5 个点
+                startTrackPoints = ml_student_choose_route_data.track.slice(0, Math.min(startSliceLen, ml_student_choose_route_data.track.length));
+            }
             ml_start_record_data = {
                 "routeName": ml_choose_route_data.route_name,
                 "ruleId": ml_choose_route_data.rule_id,
@@ -5034,7 +5125,7 @@ async function ml_getRandomTrackForVenue(planId) {
                 "exerciseTimes": null,
                 "routeKilometre": null,
                 "endImage": "",
-                "strLatitudeLongitude": JSON.stringify(ml_student_choose_route_data.track || []),
+                "strLatitudeLongitude": JSON.stringify(startTrackPoints),
                 "routeRule": ml_choose_route_data.route_rule,
                 "maxTime": ml_choose_route_data.max_time,
                 "minTime": ml_choose_route_data.min_time,
@@ -5047,7 +5138,7 @@ async function ml_getRandomTrackForVenue(planId) {
                 "studentId": ml_student_user_id,
             }
             
-                        console.log("saveStartRecord payload:", JSON.stringify(ml_start_record_data));
+                        console.log("saveStartRecord payload: routeName=" + ml_start_record_data.routeName + ", date=" + ml_start_record_data.recordTime);
             const response = await fetch(ml_base_url + "/api/exercise/exerciseRecord/saveStartRecord", {
                 method: "POST",
                 headers: {
@@ -5193,6 +5284,11 @@ async function ml_getRandomTrackForVenue(planId) {
                 ml_show_Alert("数据上传失败", "❌ 运动开始数据没有成功上传! ")
                 return false;
             }
+            // 模拟运动过程延迟
+            // 批量模式：30-90秒（真实运动4-12分钟，这是折中）；单次模式：60-180秒
+            var simulatedDelaySec = ml_batch_mode ? (30 + Math.random() * 60) : (60 + Math.random() * 120);
+            console.log("模拟运动延迟 " + simulatedDelaySec.toFixed(0) + " 秒...");
+            await new Promise(function(r){setTimeout(r, simulatedDelaySec * 1000);});
             // 上传运动结束数据
             is_finish_data_uploaded_in_one_click = await ml_upload_finish_record();
             if(!is_finish_data_uploaded_in_one_click){
@@ -5568,6 +5664,10 @@ async function ml_getRandomTrackForVenue(planId) {
                     }
                     ml_batch_state.currentDay = i + 1;
                     var currentDate = dates[i];
+                    // 批量模式每天轮换设备指纹
+                    ml_current_fingerprint = ml_pickRandomFingerprint();
+                    ml_system_info.user_agent = ml_current_fingerprint.user_agent;
+                    ml_system_info.referer = ml_current_fingerprint.referer;
                     ml_updateBatchProgress(i, dates.length, '正在处理第 ' + (i+1) + ' / ' + dates.length + ' 天 (' + currentDate + ')...');
                     try {
                         var planId;
@@ -5618,7 +5718,9 @@ async function ml_getRandomTrackForVenue(planId) {
                         console.error('处理 ' + currentDate + ' 出错:', err);
                         ml_batch_state.results.push({date: currentDate, success: false, error: err.message || String(err)});
                     }
-                    await new Promise(function(r){setTimeout(r, 1200);});
+                    // 批量间隔随机化，模拟人工操作节奏
+                    var batchDelaySec = 8000 + Math.floor(Math.random() * 17000);
+                    await new Promise(function(r){setTimeout(r, batchDelaySec);});
                 }
                 ml_batch_state.isRunning = false;
                 ml_batch_mode = false;
