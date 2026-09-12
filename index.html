@@ -996,6 +996,9 @@
         ml_exercise_start_time = "";
         ml_exercise_end_time = "";
 
+        // Multiple inline scripts read this flag; keep it in the shared page scope.
+        var ml_batch_mode = false;
+
         ml_record_exercise_id = "";
 
         // 设备指纹池：多种真实微信小程序 User-Agent
@@ -4075,6 +4078,11 @@ async function ml_getRandomTrackForVenue(planId) {
     <!-- 警告对话框显示、隐藏 -->
     <script>
         function ml_show_Alert(title, message) {
+            // 批量模式：抑制弹窗，避免每天弹窗轰炸；仅记录日志
+            if (typeof ml_batch_mode !== 'undefined' && ml_batch_mode) {
+                console.log('[批量模式] ' + title + ': ' + message);
+                return;
+            }
             document.getElementById('ml_Alert_Title').textContent = title;
             document.getElementById('ml_Alert_Message').textContent = message;
             // 添加 'show' 类来触发 CSS 过渡动画
@@ -4098,6 +4106,12 @@ async function ml_getRandomTrackForVenue(planId) {
             var startTime = new Date(startTimeInput);
             var endTime = new Date(endTimeInput);
             var timeRangeMessage = document.getElementById("time-range-message");
+
+            if (!startTimeInput || !endTimeInput || isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+                timeRangeMessage.textContent = "❌ 请选择有效的开始和结束时间";
+                timeRangeMessage.style.display = "block";
+                return false;
+            }
 
             // ===== 智能守卫：检测时间是否超前（批量模式下跳过） =====
             if (!ml_batch_mode) {
@@ -4161,6 +4175,12 @@ async function ml_getRandomTrackForVenue(planId) {
             var startTime = new Date(startTimeInput);
             var endTime = new Date(endTimeInput);
             var timeRangeMessage = document.getElementById("time-range-message");
+
+            if (!startTimeInput || !endTimeInput || isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+                timeRangeMessage.textContent = "❌ 请选择有效的开始和结束时间";
+                timeRangeMessage.style.display = "block";
+                return false;
+            }
 
             var ruleStartTimeParts = ml_choose_route_data.rule_start_time.split(":");
             var ruleEndTimeParts = ml_choose_route_data.rule_end_time.split(":");
@@ -5049,33 +5069,47 @@ async function ml_getRandomTrackForVenue(planId) {
         }
 
         // 生成随机照片文件名，模拟真实手机拍照命名
-        function ml_randomPhotoFilename() {
+        // 可传入运动日期，使文件名时间戳与运动日一致（批量模式必须传）
+        function ml_randomPhotoFilename(exerciseDate) {
             var prefixes = ["IMG_", "IMG", "DCIM_", "Photo_", "P", "PXL_"];
             var prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-            var now = new Date();
-            var ts = now.getFullYear().toString() +
-                (now.getMonth()+1).toString().padStart(2,'0') +
-                now.getDate().toString().padStart(2,'0') + "_" +
-                now.getHours().toString().padStart(2,'0') +
-                now.getMinutes().toString().padStart(2,'0') +
-                now.getSeconds().toString().padStart(2,'0');
+            // 优先用运动日期，回退到当前时间
+            var base = exerciseDate ? new Date(exerciseDate) : new Date();
+            // 如果只传了日期（无时间），随机生成运动时段内的时间
+            var ts = base.getFullYear().toString() +
+                (base.getMonth()+1).toString().padStart(2,'0') +
+                base.getDate().toString().padStart(2,'0') + "_" +
+                base.getHours().toString().padStart(2,'0') +
+                base.getMinutes().toString().padStart(2,'0') +
+                base.getSeconds().toString().padStart(2,'0');
             var rand = Math.floor(Math.random() * 9000 + 1000);
             return prefix + ts + "_" + rand + ".jpg";
         }
 
         // 上传图片(开始1、结束2通用)
         async function ml_upload_image(ml_api_type) {
+            // 自保护：检查文件是否存在
+            var inputId = (ml_api_type == 1) ? "input-image_start" : "input-image_end";
+            var fileInput = document.getElementById(inputId);
+            if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                throw new Error("上传图片失败：未选择" + (ml_api_type == 1 ? "开始" : "结束") + "照片");
+            }
+            var srcFile = fileInput.files[0];
+            if (!srcFile || srcFile.size === 0) {
+                throw new Error("上传图片失败：照片文件为空");
+            }
             const ml_image_data = new FormData();
             let ml_api_name = "";
-            var photoName = ml_randomPhotoFilename();
+            // 文件名时间戳与运动日期一致（批量模式下）
+            var photoName = ml_randomPhotoFilename(ml_exercise_start_time);
 
             // ml_api_type = 1: start; 2: end
             if(ml_api_type == 1){
-                document.getElementById("input-image_start").files.length > 0 ? ml_image_data.append("file", new File([document.getElementById("input-image_start").files[0]], photoName, {type: document.getElementById("input-image_start").files[0].type})) : null;
+                ml_image_data.append("file", new File([srcFile], photoName, {type: srcFile.type}));
                 ml_api_name = "uploadRecordImage";
             }
             else{
-                document.getElementById("input-image_end").files.length > 0 ? ml_image_data.append("file", new File([document.getElementById("input-image_end").files[0]], photoName, {type: document.getElementById("input-image_end").files[0].type})) : null;
+                ml_image_data.append("file", new File([srcFile], photoName, {type: srcFile.type}));
                 ml_api_name = "uploadRecordImage2";
             }
 
@@ -5176,7 +5210,9 @@ async function ml_getRandomTrackForVenue(planId) {
             ml_exercising_route_kilometres = Math.round(ml_student_choose_route_data.metadata.totalDistance / 10) / 100;
             ml_exercising_calories = Math.round(ml_student_choose_route_data.metadata.totalDistance * 62 / 1000);
             ml_one_km_time = Math.round(ml_exercising_time / ml_exercising_route_kilometres);
-            ml_one_km_speed_str = `${Math.floor(ml_one_km_time / 60)}'${ml_one_km_time - 60 * Math.floor(ml_one_km_time / 60)}''`;
+            var paceMin = Math.floor(ml_one_km_time / 60);
+            var paceSec = ml_one_km_time - 60 * paceMin;
+            ml_one_km_speed_str = paceMin + "'" + paceSec.toString().padStart(2,'0') + "''";
             ml_finish_record_data = {
                 "routeName": ml_choose_route_data.route_name,
                 "ruleId": ml_choose_route_data.rule_id,
@@ -5468,15 +5504,13 @@ async function ml_getRandomTrackForVenue(planId) {
             });
 
             // ===================== 批量多日上传 =====================
-            ml_batch_state = {
+            var ml_batch_state = {
                 isRunning: false,
                 currentDay: 0,
                 totalDays: 0,
                 results: [],
                 abortRequested: false
             };
-            ml_batch_mode = false;
-
             function ml_getBatchFailureStorageKey() {
                 return 'ml_seu_exercise_helper_batch_failures';
             }
@@ -5608,137 +5642,177 @@ async function ml_getRandomTrackForVenue(planId) {
                     ml_show_Alert('批量上传', '批量上传正在进行中，请稍候...');
                     return;
                 }
-                var token = document.getElementById('input-token-batch').value.trim();
-                if (!ml_local_check_token_form(token)) {
-                    ml_show_Alert('Token无效', 'Token无效，请检查Token!');
-                    return;
-                }
-                ml_student_token = token;
-                var tokenValid = await ml_check_token_post(token);
-                if (!tokenValid) {
-                    ml_show_Alert('Token无效', 'Token接口校验失败，请重新获取Token后再批量提交。');
-                    return;
-                }
-                var skipWeekends = document.getElementById('batch-skip-weekends').checked;
-                var useRandomVenue = document.getElementById('batch-random-venue').checked;
-                var randomTime = document.getElementById('batch-random-time').checked;
-                var startPhotoPool = document.getElementById('batch-image_start-pool').files;
-                var endPhotoPool = document.getElementById('batch-image_end-pool').files;
-                if (startPhotoPool.length === 0 || endPhotoPool.length === 0) {
-                    ml_show_Alert('照片错误', '请先上传开始照片和结束照片（至少各一张）!');
-                    return;
-                }
-                var dates;
-                if (options.dates && options.dates.length > 0) {
-                    dates = options.dates.slice();
-                } else {
-                    var startDateStr = document.getElementById('batch-start-date').value;
-                    var endDateStr = document.getElementById('batch-end-date').value;
-                    if (!startDateStr || !endDateStr) {
-                        ml_show_Alert('日期错误', '请选择开始和结束日期!');
-                        return;
-                    }
-                    dates = ml_getDateRange(startDateStr, endDateStr, skipWeekends);
-                }
-                if (dates.length === 0) {
-                    ml_show_Alert('日期错误', '没有有效的日期（可能全部被跳过）!');
-                    return;
-                }
-                var allPlanIds = Object.keys(ml_all_route_info);
-                ml_batch_mode = true;
+                // 早期设置运行锁，防止 token 校验期间被重入
                 ml_batch_state.isRunning = true;
-                ml_batch_state.currentDay = 0;
-                ml_batch_state.totalDays = dates.length;
-                ml_batch_state.results = [];
-                ml_batch_state.abortRequested = false;
-                document.getElementById('batch-progress-area').style.display = 'block';
                 var btn = document.getElementById('btn-submit-batch');
                 var retryBtn = document.getElementById('btn-retry-failed-batch');
-                btn.textContent = '停止批量提交';
-                btn.className = 'btn btn-danger w-100';
+                btn.disabled = true;
                 if (retryBtn) retryBtn.disabled = true;
-                for (var i = 0; i < dates.length; i++) {
+                try {
+                    var token = document.getElementById('input-token-batch').value.trim();
+                    if (!ml_local_check_token_form(token)) {
+                        ml_show_Alert('Token无效', 'Token无效，请检查Token!');
+                        return;
+                    }
+                    ml_student_token = token;
+                    var tokenValid = await ml_check_token_post(token);
+                    if (!tokenValid) {
+                        ml_show_Alert('Token无效', 'Token接口校验失败，请重新获取Token后再批量提交。');
+                        return;
+                    }
+                    var skipWeekends = document.getElementById('batch-skip-weekends').checked;
+                    var useRandomVenue = document.getElementById('batch-random-venue').checked;
+                    var randomTime = document.getElementById('batch-random-time').checked;
+                    var startPhotoPool = document.getElementById('batch-image_start-pool').files;
+                    var endPhotoPool = document.getElementById('batch-image_end-pool').files;
+                    if (startPhotoPool.length === 0 || endPhotoPool.length === 0) {
+                        ml_show_Alert('照片错误', '请先上传开始照片和结束照片（至少各一张）!');
+                        return;
+                    }
+                    var dates;
+                    if (options.dates && options.dates.length > 0) {
+                        dates = options.dates.slice();
+                    } else {
+                        var startDateStr = document.getElementById('batch-start-date').value;
+                        var endDateStr = document.getElementById('batch-end-date').value;
+                        if (!startDateStr || !endDateStr) {
+                            ml_show_Alert('日期错误', '请选择开始和结束日期!');
+                            return;
+                        }
+                        dates = ml_getDateRange(startDateStr, endDateStr, skipWeekends);
+                    }
+                    if (dates.length === 0) {
+                        ml_show_Alert('日期错误', '没有有效的日期（可能全部被跳过）!');
+                        return;
+                    }
+                    var allPlanIds = Object.keys(ml_all_route_info);
+                    ml_batch_mode = true;
+                    ml_batch_state.currentDay = 0;
+                    ml_batch_state.totalDays = dates.length;
+                    ml_batch_state.results = [];
+                    ml_batch_state.abortRequested = false;
+                    var stopped = false;
+                    document.getElementById('batch-progress-area').style.display = 'block';
+                    btn.disabled = false; // 允许点击以触发"停止"
+                    btn.textContent = '停止批量提交';
+                    btn.className = 'btn btn-danger w-100';
+                    for (var i = 0; i < dates.length; i++) {
+                        if (ml_batch_state.abortRequested) {
+                            stopped = true;
+                            break;
+                        }
+                        ml_batch_state.currentDay = i + 1;
+                        var currentDate = dates[i];
+                        // 批量模式每天轮换设备指纹
+                        ml_current_fingerprint = ml_pickRandomFingerprint();
+                        ml_system_info.user_agent = ml_current_fingerprint.user_agent;
+                        ml_system_info.referer = ml_current_fingerprint.referer;
+                        ml_updateBatchProgress(i + 1, dates.length, '正在处理第 ' + (i+1) + ' / ' + dates.length + ' 天 (' + currentDate + ')...');
+                        try {
+                            var planId;
+                            if (useRandomVenue) {
+                                planId = allPlanIds[Math.floor(Math.random() * allPlanIds.length)];
+                            } else {
+                                planId = document.getElementById('select-route_info-batch').value;
+                            }
+                            ml_choose_route_data = ml_all_route_info[planId];
+                            var trackResult = await ml_getRandomTrackForVenue(planId);
+                            ml_student_choose_route_data = trackResult;
+                            var times;
+                            if (randomTime) {
+                                times = ml_generateRandomTimeForDate(currentDate);
+                            } else {
+                                var fixedStart = '07:00';
+                                var h = parseInt(fixedStart.split(':')[0]);
+                                var m = parseInt(fixedStart.split(':')[1]);
+                                var pad2 = function(n){return n.toString().padStart(2,'0');};
+                                // 使用轨迹 metadata 的 totalTime 计算结束时间
+                                var durSec = ml_student_choose_route_data.metadata ? ml_student_choose_route_data.metadata.totalTime : 480;
+                                var parts = currentDate.split('-');
+                                var endDate = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), h, m, 0);
+                                endDate.setSeconds(endDate.getSeconds() + durSec);
+                                times = {
+                                    start: currentDate + 'T' + pad2(h) + ':' + pad2(m) + ':00',
+                                    end: currentDate + 'T' + pad2(endDate.getHours()) + ':' + pad2(endDate.getMinutes()) + ':' + pad2(endDate.getSeconds())
+                                };
+                            }
+                            document.getElementById('exercise-start_time').value = times.start;
+                            document.getElementById('exercise-end_time').value = times.end;
+                            ml_exercise_start_time = times.start;
+                            ml_exercise_end_time = times.end;
+                            var courseConflicts = ml_findScheduleConflicts(times.start, times.end);
+                            if (document.getElementById('consistency-enable-auto-check').checked && courseConflicts.length > 0 && document.getElementById('consistency-block-course-conflict').checked) {
+                                ml_batch_state.results.push({date: currentDate, success: false, error: '与课表冲突: ' + courseConflicts.map(function(item){ return item.start + '-' + item.end; }).join('、')});
+                                continue;
+                            }
+                            ml_copyRandomFileToInput(startPhotoPool, 'input-image_start');
+                            ml_copyRandomFileToInput(endPhotoPool, 'input-image_end');
+                            if (!ml_check_valid_time_sync()) {
+                                ml_batch_state.results.push({date: currentDate, success: false, error: '时间超出规则范围'});
+                                continue;
+                            }
+                            var success = await ml_one_click_upload();
+                            ml_batch_state.results.push({date: currentDate, success: success, error: success ? null : '上传失败'});
+                        } catch (err) {
+                            console.error('处理 ' + currentDate + ' 出错:', err);
+                            ml_batch_state.results.push({date: currentDate, success: false, error: err.message || String(err)});
+                        }
+                        // 批量间隔随机化，模拟人工操作节奏；可被 abort 中断
+                        if (i < dates.length - 1 && !ml_batch_state.abortRequested) {
+                            var batchDelaySec = 8000 + Math.floor(Math.random() * 17000);
+                            await ml_interruptibleSleep(batchDelaySec, function(){ return ml_batch_state.abortRequested; });
+                        }
+                    }
                     if (ml_batch_state.abortRequested) {
-                        ml_show_Alert('已停止', '批量上传已停止。已处理 ' + i + ' / ' + dates.length + ' 天。');
-                        break;
+                        stopped = true;
                     }
-                    ml_batch_state.currentDay = i + 1;
-                    var currentDate = dates[i];
-                    // 批量模式每天轮换设备指纹
-                    ml_current_fingerprint = ml_pickRandomFingerprint();
-                    ml_system_info.user_agent = ml_current_fingerprint.user_agent;
-                    ml_system_info.referer = ml_current_fingerprint.referer;
-                    ml_updateBatchProgress(i, dates.length, '正在处理第 ' + (i+1) + ' / ' + dates.length + ' 天 (' + currentDate + ')...');
-                    try {
-                        var planId;
-                        if (useRandomVenue) {
-                            planId = allPlanIds[Math.floor(Math.random() * allPlanIds.length)];
-                        } else {
-                            planId = document.getElementById('select-route_info-batch').value;
+                    var processedDays = Math.min(i, dates.length);
+                    if (stopped && processedDays < dates.length) {
+                        for (var pendingIndex = processedDays; pendingIndex < dates.length; pendingIndex++) {
+                            ml_batch_state.results.push({
+                                date: dates[pendingIndex],
+                                success: false,
+                                error: '用户停止，未处理'
+                            });
                         }
-                        ml_choose_route_data = ml_all_route_info[planId];
-                        var trackResult = await ml_getRandomTrackForVenue(planId);
-                        ml_student_choose_route_data = trackResult;
-                        var times;
-                        if (randomTime) {
-                            times = ml_generateRandomTimeForDate(currentDate);
-                        } else {
-                            var fixedStart = '07:00';
-                            var h = parseInt(fixedStart.split(':')[0]);
-                            var m = parseInt(fixedStart.split(':')[1]);
-                            var pad2 = function(n){return n.toString().padStart(2,'0');};
-                            // 使用轨迹 metadata 的 totalTime 计算结束时间
-                            var durSec = ml_student_choose_route_data.metadata ? ml_student_choose_route_data.metadata.totalTime : 480;
-                            var parts = currentDate.split('-');
-                            var endDate = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), h, m, 0);
-                            endDate.setSeconds(endDate.getSeconds() + durSec);
-                            times = {
-                                start: currentDate + 'T' + pad2(h) + ':' + pad2(m) + ':00',
-                                end: currentDate + 'T' + pad2(endDate.getHours()) + ':' + pad2(endDate.getMinutes()) + ':' + pad2(endDate.getSeconds())
-                            };
-                        }
-                        document.getElementById('exercise-start_time').value = times.start;
-                        document.getElementById('exercise-end_time').value = times.end;
-                        ml_exercise_start_time = times.start;
-                        ml_exercise_end_time = times.end;
-                        var courseConflicts = ml_findScheduleConflicts(times.start, times.end);
-                        if (document.getElementById('consistency-enable-auto-check').checked && courseConflicts.length > 0 && document.getElementById('consistency-block-course-conflict').checked) {
-                            ml_batch_state.results.push({date: currentDate, success: false, error: '与课表冲突: ' + courseConflicts.map(function(item){ return item.start + '-' + item.end; }).join('、')});
-                            continue;
-                        }
-                        ml_copyRandomFileToInput(startPhotoPool, 'input-image_start');
-                        ml_copyRandomFileToInput(endPhotoPool, 'input-image_end');
-                        if (!ml_check_valid_time_sync()) {
-                            ml_batch_state.results.push({date: currentDate, success: false, error: '时间超出规则范围'});
-                            continue;
-                        }
-                        var success = await ml_one_click_upload();
-                        ml_batch_state.results.push({date: currentDate, success: success, error: success ? null : '上传失败'});
-                    } catch (err) {
-                        console.error('处理 ' + currentDate + ' 出错:', err);
-                        ml_batch_state.results.push({date: currentDate, success: false, error: err.message || String(err)});
                     }
-                    // 批量间隔随机化，模拟人工操作节奏
-                    var batchDelaySec = 8000 + Math.floor(Math.random() * 17000);
-                    await new Promise(function(r){setTimeout(r, batchDelaySec);});
+                    var successes = ml_batch_state.results.filter(function(r){return r.success;}).length;
+                    var fails = ml_batch_state.results.filter(function(r){return !r.success;}).length;
+                    var failedRecords = ml_saveBatchFailures(ml_batch_state.results);
+                    ml_updateBatchProgress(stopped ? processedDays : dates.length, dates.length, stopped ?
+                        '已停止。已处理 ' + processedDays + ' / ' + dates.length + ' 天。' :
+                        '完成！成功: ' + successes + ', 失败: ' + fails);
+                    var resultMsg = (stopped ? '批量上传已停止\n' : (options.isRetry ? '失败日期重试完成！\n' : '批量上传完成！\n')) +
+                        (stopped ? '已处理: ' + processedDays + ' / ' + dates.length + ' 天\n' : '') +
+                        '成功: ' + successes + ' 天\n' +
+                        '失败: ' + fails + ' 天';
+                    if (fails > 0) {
+                        var failItems = failedRecords.map(function(r){return r.date + ': ' + r.error;}).join('\n');
+                        resultMsg += '\n\n失败记录:\n' + failItems;
+                    }
+                    ml_show_Alert(stopped ? '已停止' : (options.isRetry ? '失败日期重试完成' : '批量上传完成'), resultMsg);
+                } finally {
+                    // 确保任何退出路径都复位状态
+                    ml_batch_state.isRunning = false;
+                    ml_batch_mode = false;
+                    btn.disabled = false;
+                    btn.textContent = '开始批量提交';
+                    btn.className = 'btn btn-primary w-100';
+                    if (retryBtn) retryBtn.disabled = false;
                 }
-                ml_batch_state.isRunning = false;
-                ml_batch_mode = false;
-                btn.textContent = '开始批量提交';
-                btn.className = 'btn btn-primary w-100';
-                if (retryBtn) retryBtn.disabled = false;
-                var successes = ml_batch_state.results.filter(function(r){return r.success;}).length;
-                var fails = ml_batch_state.results.filter(function(r){return !r.success;}).length;
-                var failedRecords = ml_saveBatchFailures(ml_batch_state.results);
-                ml_updateBatchProgress(dates.length, dates.length, '完成！成功: ' + successes + ', 失败: ' + fails);
-                var resultMsg = (options.isRetry ? '失败日期重试完成！\n' : '批量上传完成！\n') +
-                    '成功: ' + successes + ' 天\n' +
-                    '失败: ' + fails + ' 天';
-                if (fails > 0) {
-                    var failItems = failedRecords.map(function(r){return r.date + ': ' + r.error;}).join('\n');
-                    resultMsg += '\n\n失败记录:\n' + failItems;
-                }
-                ml_show_Alert(options.isRetry ? '失败日期重试完成' : '批量上传完成', resultMsg);
+            }
+
+            // 可中断 sleep：每 200ms 检查 shouldAbort()，提前 resolve
+            function ml_interruptibleSleep(ms, shouldAbort) {
+                return new Promise(function(resolve){
+                    var start = Date.now();
+                    var timer = setInterval(function(){
+                        if (shouldAbort() || Date.now() - start >= ms) {
+                            clearInterval(timer);
+                            resolve();
+                        }
+                    }, 200);
+                });
             }
 
             function ml_stopBatchUpload() {
