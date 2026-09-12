@@ -2468,6 +2468,1148 @@
                 min-height: 900px;
             }
         }
+        /* Editorial layout v2: typography, spacious composition, readable media */
+        @font-face {
+            font-family: "Noto Sans SC Local";
+            src: url("assets/fonts/NotoSansSC-UI.woff2") format("woff2");
+            font-style: normal;
+            font-weight: 100 900;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: "Barlow Condensed Local";
+            src: url("assets/fonts/BarlowCondensed-SemiBold.woff2") format("woff2");
+            font-style: normal;
+            font-weight: 600;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: "Barlow Condensed Local";
+            src: url("assets/fonts/BarlowCondensed-Black.woff2") format("woff2");
+            font-style: normal;
+            font-weight: 900;
+            font-display: swap;
+        }
+
+        body {
+            font-family: "Noto Sans SC Local", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+            font-size: 16px;
+            line-height: 1.65;
+            background:
+                radial-gradient(circle at 8% 24%, rgba(77, 202, 168, 0.10), transparent 28rem),
+                radial-gradient(circle at 94% 54%, rgba(35, 111, 224, 0.10), transparent 34rem),
+                #f3f6f2;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit;
+        }
+
+        #main-form {
+            display: block;
+            margin: 0;
+        }
+
+        .page-topbar {
+            min-height: 82px;
+            padding: 12px max(28px, calc((100vw - 1380px) / 2));
+            background: rgba(255, 255, 252, 0.94);
+        }
+
+        .brand-lockup strong,
+        .hero-kicker,
+        .section-eyebrow,
+        .visual-banner-copy span {
+            font-family: "Barlow Condensed Local", "Arial Narrow", sans-serif;
+        }
+
+        .brand-lockup strong {
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+        }
+
+        .brand-lockup small {
+            font-size: 13px;
+        }
+
+        .topbar-link {
+            min-height: 42px;
+            padding-inline: 16px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .app-hero {
+            min-height: 760px;
+            padding: 76px 28px 104px;
+            background:
+                linear-gradient(90deg, rgba(255, 254, 249, 0.99) 0%, rgba(255, 254, 249, 0.93) 30%, rgba(255, 254, 249, 0.44) 58%, rgba(255, 254, 249, 0.10) 100%),
+                linear-gradient(180deg, rgba(255,255,255,0) 68%, rgba(239,246,243,0.38) 100%),
+                url("assets/light-campus-track-v1.webp") center center / cover no-repeat;
+        }
+
+        .app-hero::after {
+            display: none;
+        }
+
+        .hero-layout {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: minmax(0, 1.28fr) minmax(470px, 0.72fr);
+            gap: clamp(54px, 6vw, 92px);
+            align-items: center;
+            width: min(1380px, 100%);
+            margin: 0 auto;
+        }
+
+        .hero-copy {
+            width: auto;
+            max-width: 760px;
+            margin: 0;
+        }
+
+        .hero-copy > * {
+            animation: none;
+        }
+
+        .hero-kicker {
+            gap: 12px;
+            color: #185daf;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.22em;
+        }
+
+        .hero-brand-title {
+            margin-top: 18px;
+            color: #102543;
+            font-family: "Barlow Condensed Local", "Arial Narrow", sans-serif;
+            font-size: clamp(72px, 5.3vw, 84px);
+            font-weight: 900;
+            letter-spacing: -0.025em;
+            line-height: 0.9;
+            text-transform: uppercase;
+        }
+
+        .hero-brand-title span {
+            color: #176de4;
+        }
+
+        .app-hero .hero-cn-title {
+            margin: 18px 0 0;
+            color: #102543;
+            font-family: "Noto Sans SC Local", "Microsoft YaHei UI", sans-serif;
+            font-size: 34px;
+            font-weight: 760;
+            letter-spacing: 0.08em;
+            line-height: 1.25;
+        }
+
+        .hero-lead {
+            max-width: 650px;
+            margin-top: 20px;
+            color: #50647d;
+            font-size: 18px;
+            line-height: 1.8;
+        }
+
+        .hero-flow {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0;
+            width: min(720px, 100%);
+            margin-top: 38px;
+        }
+
+        .hero-flow-step {
+            position: relative;
+            display: grid;
+            justify-items: start;
+            gap: 8px;
+            min-height: 150px;
+            padding: 0 18px 0 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            backdrop-filter: none;
+        }
+
+        .hero-flow-step:hover {
+            border-color: transparent;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .hero-flow-step:not(:last-child)::after {
+            position: absolute;
+            top: 58px;
+            left: 62px;
+            width: calc(100% - 72px);
+            height: 1px;
+            background: linear-gradient(90deg, rgba(23, 105, 224, 0.52), rgba(23, 105, 224, 0.12));
+            content: "";
+        }
+
+        .hero-flow-index {
+            width: auto;
+            height: auto;
+            color: #1769df;
+            background: transparent;
+            font-family: "Barlow Condensed Local", "Arial Narrow", sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+        }
+
+        .hero-flow-step:nth-child(4) .hero-flow-index {
+            color: #16866c;
+            background: transparent;
+        }
+
+        .hero-flow-icon {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            width: 52px;
+            height: 52px;
+            place-items: center;
+            border: 1px solid rgba(23, 105, 224, 0.16);
+            border-radius: 50%;
+            color: #1769df;
+            background: rgba(242, 247, 255, 0.94);
+            box-shadow: 0 11px 28px rgba(23, 105, 224, 0.12);
+        }
+
+        .hero-flow-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 1.7;
+        }
+
+        .hero-flow-step strong {
+            margin-top: 2px;
+            color: #17304f;
+            font-size: 16px;
+            font-weight: 650;
+        }
+
+        .hero-flow-step small {
+            margin-top: 0;
+            color: #6a7d94;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .hero-actions {
+            margin-top: 28px;
+        }
+
+        .hero-action {
+            min-height: 54px;
+            padding: 14px 22px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 650;
+        }
+
+        .hero-action-primary {
+            min-width: 220px;
+        }
+
+        .hero-network-note {
+            max-width: 650px;
+            margin-top: 16px;
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .hero-quick-panel {
+            align-self: center;
+            width: 100%;
+            padding: 28px;
+            border: 1px solid rgba(54, 102, 153, 0.18);
+            border-radius: 24px;
+            background: rgba(255, 255, 253, 0.88);
+            box-shadow: 0 28px 70px rgba(29, 67, 108, 0.17), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(22px) saturate(1.08);
+        }
+
+        .hero-panel-heading {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 23px;
+        }
+
+        .hero-panel-heading img {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            box-shadow: 0 9px 22px rgba(23, 105, 224, 0.15);
+        }
+
+        .hero-panel-heading span {
+            display: block;
+            color: #1769df;
+            font-family: "Barlow Condensed Local", "Arial Narrow", sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+        }
+
+        .hero-panel-heading h2 {
+            margin: 2px 0 0;
+            color: #152c49;
+            font-size: 23px;
+            font-weight: 720;
+            letter-spacing: 0.01em;
+        }
+
+        .hero-panel-heading p {
+            margin: 3px 0 0;
+            color: #6b7e94;
+            font-size: 14px;
+        }
+
+        .hero-field {
+            min-width: 0;
+            margin-top: 16px;
+        }
+
+        .hero-field-full + .hero-field-full {
+            margin-top: 17px;
+        }
+
+        .hero-panel-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .hero-quick-panel .form-label {
+            margin-bottom: 7px;
+            color: #263e5d;
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .hero-quick-panel .form-control,
+        .hero-quick-panel .form-select {
+            min-height: 48px;
+            border-radius: 10px;
+            font-size: 15px;
+            background: rgba(255, 255, 255, 0.94);
+        }
+
+        .hero-panel-tools {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+            margin-top: 16px;
+        }
+
+        .hero-panel-tools .btn {
+            min-height: 38px;
+            margin: 0;
+            padding: 7px 12px;
+            font-size: 14px;
+        }
+
+        .security-note,
+        .guide-note,
+        .reference-caption small {
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .hero-continue-tool {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 52px;
+            margin-top: 20px;
+            border: 0;
+            border-radius: 10px;
+            color: #ffffff;
+            background: linear-gradient(135deg, #1770ec, #0d52bf);
+            box-shadow: 0 14px 28px rgba(23, 105, 224, 0.20);
+            font-size: 16px;
+            font-weight: 680;
+            cursor: pointer;
+            transition: transform 170ms ease, box-shadow 170ms ease;
+        }
+
+        .hero-continue-tool:hover,
+        .hero-continue-tool:focus-visible {
+            outline: none;
+            box-shadow: 0 18px 36px rgba(23, 105, 224, 0.27);
+            transform: translateY(-2px);
+        }
+
+        .hero-panel-footnote {
+            margin: 11px 0 0;
+            color: #708196;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .app-shell > #main-form > .card.shadow-sm {
+            position: relative;
+            z-index: 5;
+            width: min(1280px, calc(100% - 56px));
+            margin: -34px auto 94px;
+            overflow: hidden;
+            border: 1px solid rgba(35, 83, 132, 0.13);
+            border-radius: 24px;
+            background: rgba(255, 255, 252, 0.95);
+            box-shadow: 0 30px 80px rgba(36, 70, 107, 0.13) !important;
+        }
+
+        .app-shell > #main-form > .card.shadow-sm::before {
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #1769e0 0 62%, #2fc5a1 62% 76%, transparent 76%);
+            content: "";
+        }
+
+        .app-shell > #main-form > .card.shadow-sm .card-body {
+            padding: 38px clamp(28px, 4.5vw, 58px) 58px;
+            background:
+                radial-gradient(circle at 96% 4%, rgba(47, 197, 161, 0.065), transparent 20rem),
+                rgba(255, 255, 253, 0.93);
+        }
+
+        .app-shell .border-bottom.mb-4 {
+            max-width: 860px;
+            margin: 0 auto 48px !important;
+            padding: 5px;
+            border-radius: 12px;
+        }
+
+        .app-shell .tab-item {
+            min-height: 50px;
+            font-size: 15px;
+            font-weight: 620;
+        }
+
+        .workbench-intro {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 30px;
+            margin-bottom: 28px;
+            padding-bottom: 26px;
+            border-bottom: 1px solid rgba(29, 77, 126, 0.13);
+        }
+
+        .section-eyebrow {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+        }
+
+        .workbench-intro h2 {
+            margin: 7px 0 4px;
+            color: #132b48;
+            font-size: 30px;
+            font-weight: 740;
+            letter-spacing: -0.025em;
+        }
+
+        .workbench-intro p {
+            margin: 0;
+            color: #61748b;
+            font-size: 16px;
+        }
+
+        .workbench-back-link {
+            flex: 0 0 auto;
+            padding: 10px 0;
+            border: 0;
+            color: #145dbd;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 650;
+            cursor: pointer;
+        }
+
+        .photo-guidance {
+            grid-template-columns: minmax(0, 1.18fr) minmax(340px, 0.82fr);
+            min-height: 300px;
+            margin: 0 0 34px !important;
+            border-radius: 18px;
+        }
+
+        .photo-guidance img {
+            height: 300px;
+            object-position: center;
+        }
+
+        .photo-guidance > div {
+            align-self: center;
+            padding: 38px;
+        }
+
+        .photo-guidance strong {
+            margin-top: 12px;
+            font-size: 22px;
+            line-height: 1.45;
+        }
+
+        .photo-guidance p {
+            margin-top: 12px;
+            font-size: 15px;
+            line-height: 1.75;
+        }
+
+        #run-area > .row {
+            gap: 0;
+            margin-bottom: 28px;
+        }
+
+        #run-area > .row > .col-md-6 > .mb-3 {
+            padding: 18px;
+            border: 1px solid rgba(29, 77, 126, 0.11);
+            border-radius: 15px;
+            background: #fbfcfa;
+        }
+
+        .preview-image {
+            min-height: 210px;
+        }
+
+        #run-area > .mb-3:not(.photo-guidance),
+        #batch-area > .mb-3 {
+            padding: 26px;
+            border-radius: 16px;
+        }
+
+        .app-shell .form-label {
+            font-size: 14px;
+        }
+
+        .app-shell .form-control,
+        .app-shell .form-select {
+            font-size: 15px;
+        }
+
+        .guide-shell {
+            gap: 42px;
+        }
+
+        .guide-hero {
+            min-height: 470px;
+            padding: 58px;
+            border-radius: 20px;
+        }
+
+        .guide-hero-copy {
+            max-width: 590px;
+        }
+
+        .guide-title {
+            max-width: 560px;
+            margin-top: 18px;
+            font-size: 42px;
+            line-height: 1.18;
+        }
+
+        .guide-subtitle {
+            max-width: 550px;
+            margin-top: 17px;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+
+        .guide-link-row .guide-note {
+            max-width: 340px;
+            font-size: 14px;
+        }
+
+        .reference-strip {
+            padding: 10px 0 20px;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+        }
+
+        .reference-strip-head {
+            align-items: end;
+            margin-bottom: 16px;
+            padding: 0 4px 24px;
+            border-bottom: 1px solid rgba(29, 77, 126, 0.15);
+        }
+
+        .reference-strip-head h2 {
+            margin-top: 8px;
+            font-size: 30px;
+            font-weight: 740;
+        }
+
+        .reference-strip-head p {
+            font-size: 14px;
+        }
+
+        .reference-gallery {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        .reference-shot {
+            position: relative;
+            display: grid;
+            grid-template-columns: minmax(260px, 0.48fr) minmax(560px, 1.52fr);
+            gap: clamp(34px, 5vw, 70px);
+            align-items: center;
+            width: 100%;
+            padding: 46px 4px;
+            overflow: visible;
+            border: 0;
+            border-bottom: 1px solid rgba(29, 77, 126, 0.13);
+            border-radius: 0;
+            color: #132b48;
+            background: transparent;
+            box-shadow: none;
+            font: inherit;
+            text-align: left;
+            cursor: zoom-in;
+        }
+
+        .reference-shot:hover,
+        .reference-shot:focus-visible {
+            border-color: rgba(23, 105, 224, 0.34);
+            color: #132b48;
+            outline: none;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .reference-shot:focus-visible .reference-media {
+            outline: 3px solid rgba(23, 105, 224, 0.34);
+            outline-offset: 4px;
+        }
+
+        .reference-caption {
+            display: flex;
+            align-items: flex-start;
+            flex-direction: column;
+            padding: 0;
+        }
+
+        .reference-index {
+            position: static;
+            width: auto;
+            height: auto;
+            margin-bottom: 20px;
+            color: #1769df;
+            background: transparent;
+            box-shadow: none;
+            font-family: "Barlow Condensed Local", "Arial Narrow", sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+        }
+
+        .reference-caption strong {
+            font-size: 27px;
+            font-weight: 730;
+            line-height: 1.35;
+        }
+
+        .reference-caption small {
+            margin-top: 12px;
+            color: #60738b;
+            font-size: 15px;
+            line-height: 1.75;
+        }
+
+        .reference-zoom-hint {
+            display: inline-flex;
+            gap: 6px;
+            margin-top: 24px;
+            color: #145fca;
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .reference-media {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+            border: 1px solid rgba(29, 77, 126, 0.13);
+            border-radius: 18px;
+            background: linear-gradient(145deg, #eef4f7, #f8fbfc);
+            box-shadow: 0 20px 48px rgba(39, 76, 113, 0.10);
+            transition: box-shadow 180ms ease, transform 180ms ease;
+        }
+
+        .reference-shot:hover .reference-media {
+            box-shadow: 0 26px 58px rgba(39, 76, 113, 0.16);
+            transform: translateY(-3px);
+        }
+
+        .reference-shot img {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: auto;
+            max-height: none;
+            padding: 0;
+            border-radius: 10px;
+            background: #ffffff;
+            object-fit: contain;
+        }
+
+        .guide-section {
+            padding: 34px;
+        }
+
+        .guide-section-title {
+            margin-bottom: 22px;
+            font-size: 24px;
+        }
+
+        .guide-flow li {
+            min-height: 148px;
+            padding: 23px 22px 22px 68px;
+        }
+
+        .guide-flow li strong,
+        .guide-step strong {
+            font-size: 16px;
+        }
+
+        .guide-flow li p,
+        .guide-step p {
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .guide-step {
+            min-height: 170px;
+            padding: 21px;
+        }
+
+        .visual-banner {
+            min-height: 320px;
+        }
+
+        .visual-banner img {
+            height: 320px;
+        }
+
+        .visual-banner-copy {
+            left: 38px;
+            max-width: 380px;
+        }
+
+        .visual-banner-copy strong {
+            font-size: 28px;
+        }
+
+        .image-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 2200;
+            display: grid;
+            place-items: center;
+            padding: 30px;
+            visibility: hidden;
+            opacity: 0;
+            background: rgba(6, 18, 34, 0.88);
+            backdrop-filter: blur(16px);
+            pointer-events: none;
+            transition: opacity 180ms ease, visibility 180ms ease;
+        }
+
+        .image-lightbox.is-open {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        body.lightbox-open {
+            overflow: hidden;
+        }
+
+        .image-lightbox-stage {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            gap: 14px;
+            max-width: 94vw;
+            max-height: 92vh;
+            margin: 0;
+        }
+
+        .image-lightbox-stage img {
+            display: block;
+            max-width: 92vw;
+            max-height: 82vh;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.38);
+            object-fit: contain;
+        }
+
+        .image-lightbox-stage figcaption {
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 15px;
+        }
+
+        .image-lightbox-close {
+            position: absolute;
+            top: 22px;
+            right: 28px;
+            display: grid;
+            width: 48px;
+            height: 48px;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 50%;
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.10);
+            font-size: 30px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .image-lightbox-close:focus-visible {
+            outline: 3px solid rgba(255, 255, 255, 0.68);
+            outline-offset: 3px;
+        }
+
+        .footer,
+        .footer .small {
+            font-size: 14px;
+        }
+
+        @media (max-width: 1160px) {
+            .app-hero {
+                padding-inline: 24px;
+            }
+
+            .hero-layout {
+                grid-template-columns: minmax(0, 1fr) minmax(430px, 0.82fr);
+                gap: 38px;
+            }
+
+            .hero-brand-title {
+                font-size: 68px;
+            }
+
+            .hero-flow-step:not(:last-child)::after {
+                width: calc(100% - 64px);
+            }
+
+            .reference-shot {
+                grid-template-columns: minmax(230px, 0.42fr) minmax(560px, 1.58fr);
+                gap: 34px;
+            }
+        }
+
+        @media (max-width: 980px) {
+            .app-hero {
+                min-height: auto;
+                padding-top: 66px;
+                background:
+                    linear-gradient(90deg, rgba(255, 254, 249, 0.98), rgba(255, 254, 249, 0.76)),
+                    url("assets/light-campus-track-v1.webp") 56% center / cover no-repeat;
+            }
+
+            .hero-layout {
+                grid-template-columns: 1fr;
+                gap: 48px;
+                width: min(760px, 100%);
+            }
+
+            .hero-copy {
+                max-width: 760px;
+            }
+
+            .hero-quick-panel {
+                width: min(720px, 100%);
+            }
+
+            .app-shell > #main-form > .card.shadow-sm {
+                width: calc(100% - 32px);
+                margin-top: -24px;
+            }
+
+            .reference-shot {
+                grid-template-columns: 1fr;
+                gap: 26px;
+                padding-block: 38px;
+            }
+
+            .reference-caption {
+                max-width: 620px;
+            }
+
+            .guide-steps {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            body {
+                font-size: 16px;
+            }
+
+            .page-topbar {
+                min-height: 70px;
+                padding-inline: 16px;
+            }
+
+            .brand-lockup strong {
+                font-size: 16px;
+            }
+
+            .topbar-link {
+                min-height: 36px;
+                padding-inline: 9px;
+                font-size: 13px;
+            }
+
+            .app-hero {
+                min-height: auto;
+                padding: 52px 16px 78px;
+            }
+
+            .hero-layout {
+                gap: 38px;
+            }
+
+            .hero-kicker {
+                font-size: 13px;
+            }
+
+            .hero-brand-title {
+                margin-top: 14px;
+                font-size: 52px;
+                line-height: 0.94;
+            }
+
+            .app-hero .hero-cn-title {
+                margin-top: 13px;
+                font-size: 28px;
+                letter-spacing: 0.04em;
+            }
+
+            .hero-lead {
+                margin-top: 16px;
+                font-size: 16px;
+                line-height: 1.75;
+            }
+
+            .hero-flow {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 22px 16px;
+                margin-top: 30px;
+            }
+
+            .hero-flow-step {
+                min-height: 136px;
+                padding-right: 8px;
+            }
+
+            .hero-flow-step::after {
+                display: none;
+            }
+
+            .hero-flow-step strong {
+                font-size: 15px;
+            }
+
+            .hero-flow-step small {
+                font-size: 13px;
+            }
+
+            .hero-actions {
+                grid-template-columns: 1fr;
+                width: 100%;
+            }
+
+            .hero-action-primary {
+                min-width: 0;
+            }
+
+            .hero-network-note {
+                max-width: 100%;
+                font-size: 13px;
+            }
+
+            .hero-quick-panel {
+                padding: 22px 18px;
+                border-radius: 18px;
+            }
+
+            .hero-panel-heading h2 {
+                font-size: 21px;
+            }
+
+            .hero-panel-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .hero-quick-panel .form-control,
+            .hero-quick-panel .form-select {
+                font-size: 14px;
+            }
+
+            .app-shell > #main-form > .card.shadow-sm {
+                width: calc(100% - 20px);
+                margin: -20px auto 48px;
+                border-radius: 18px;
+            }
+
+            .app-shell > #main-form > .card.shadow-sm .card-body {
+                padding: 24px 16px 34px;
+            }
+
+            .app-shell .border-bottom.mb-4 {
+                margin-bottom: 34px !important;
+            }
+
+            .app-shell .tab-item {
+                font-size: 14px;
+            }
+
+            .workbench-intro {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .workbench-intro h2 {
+                font-size: 26px;
+            }
+
+            .workbench-intro p {
+                font-size: 15px;
+            }
+
+            .photo-guidance {
+                grid-template-columns: 1fr;
+                min-height: 0;
+            }
+
+            .photo-guidance img {
+                height: auto;
+                aspect-ratio: 16 / 8;
+            }
+
+            .photo-guidance > div {
+                padding: 24px 20px;
+            }
+
+            .photo-guidance strong {
+                font-size: 20px;
+            }
+
+            .preview-image {
+                min-height: 170px;
+            }
+
+            .guide-hero {
+                min-height: 560px;
+                padding: 34px 22px;
+            }
+
+            .guide-title {
+                font-size: 32px;
+            }
+
+            .guide-subtitle {
+                font-size: 15px;
+            }
+
+            .reference-strip-head {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .reference-strip-head h2 {
+                font-size: 26px;
+            }
+
+            .reference-shot {
+                padding-block: 34px;
+            }
+
+            .reference-caption strong {
+                font-size: 23px;
+            }
+
+            .reference-caption small,
+            .security-note,
+            .guide-note {
+                font-size: 13px;
+            }
+
+            .reference-media {
+                padding: 9px;
+                border-radius: 14px;
+            }
+
+            .guide-section {
+                padding: 24px 18px;
+            }
+
+            .guide-flow,
+            .guide-steps {
+                grid-template-columns: 1fr;
+            }
+
+            .visual-banner,
+            .visual-banner img {
+                min-height: 260px;
+                height: 260px;
+            }
+
+            .image-lightbox {
+                padding: 16px;
+            }
+
+            .image-lightbox-close {
+                top: 12px;
+                right: 12px;
+                width: 42px;
+                height: 42px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .hero-brand-title {
+                font-size: 46px;
+            }
+
+            .app-hero .hero-cn-title {
+                font-size: 25px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2502,50 +3644,118 @@
             </nav>
         </div>
 
+        <form id="main-form">
         <header class="app-hero">
-            <div class="hero-copy">
-                <div class="hero-kicker"><span class="hero-kicker-mark"></span> SEU EXERCISE RECORD</div>
-                <h1>先登录 SEU，<br><span class="hero-accent">再完成运动记录</span></h1>
-                <p class="hero-lead">这里不是 SEU 登录页。先进入学校运动平台完成登录并复制 Token，再回到本页选择路线、时间与照片，确认无误后提交。</p>
+            <div class="hero-layout">
+                <div class="hero-copy">
+                    <div class="hero-kicker"><span class="hero-kicker-mark"></span> SOUTHEAST UNIVERSITY</div>
+                    <div class="hero-brand-title"><span>SEU</span> RUN LOG</div>
+                    <h1 class="hero-cn-title">东大跑步记录助手</h1>
+                    <p class="hero-lead">从学校平台登录，到填写、检查与提交，一条清楚的路径完成本次运动记录。</p>
 
-                <div class="hero-flow" aria-label="四步使用流程">
-                    <article class="hero-flow-step">
-                        <span class="hero-flow-index">01</span>
-                        <div><strong>进入 SEU</strong><small>在学校网络环境中登录</small></div>
-                    </article>
-                    <article class="hero-flow-step">
-                        <span class="hero-flow-index">02</span>
-                        <div><strong>复制 Token</strong><small>从登录后的请求信息获取</small></div>
-                    </article>
-                    <article class="hero-flow-step">
-                        <span class="hero-flow-index">03</span>
-                        <div><strong>填写记录</strong><small>选择场地、时间与照片</small></div>
-                    </article>
-                    <article class="hero-flow-step">
-                        <span class="hero-flow-index">04</span>
-                        <div><strong>检查提交</strong><small>本地预检后再发起请求</small></div>
-                    </article>
+                    <div class="hero-flow" aria-label="四步使用流程">
+                        <article class="hero-flow-step">
+                            <span class="hero-flow-index">01</span>
+                            <span class="hero-flow-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>
+                            </span>
+                            <div><strong>登录</strong><small>进入 SEU 平台</small></div>
+                        </article>
+                        <article class="hero-flow-step">
+                            <span class="hero-flow-index">02</span>
+                            <span class="hero-flow-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5M10 12h6M10 16h6"></path></svg>
+                            </span>
+                            <div><strong>复制 Token</strong><small>读取登录凭证</small></div>
+                        </article>
+                        <article class="hero-flow-step">
+                            <span class="hero-flow-index">03</span>
+                            <span class="hero-flow-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>
+                            </span>
+                            <div><strong>填写</strong><small>场地、时间、照片</small></div>
+                        </article>
+                        <article class="hero-flow-step">
+                            <span class="hero-flow-index">04</span>
+                            <span class="hero-flow-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 2.6 2.6L16.5 9"></path></svg>
+                            </span>
+                            <div><strong>提交</strong><small>预检后确认结果</small></div>
+                        </article>
+                    </div>
+
+                    <div class="hero-actions">
+                        <a id="hero-seu-entry" class="hero-action hero-action-primary" href="https://tyxsjpt.seu.edu.cn/h5/#/pages/home/index" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+                            去 SEU 平台登录 <span aria-hidden="true">↗</span>
+                        </a>
+                        <button id="hero-start-tool" class="hero-action hero-action-secondary" type="button">
+                            我已有 Token <span aria-hidden="true">→</span>
+                        </button>
+                    </div>
+                    <p class="hero-network-note"><span aria-hidden="true">●</span> 本页不代替学校身份认证；校外无法打开入口时，请先使用可访问校内服务的网络。</p>
                 </div>
 
-                <div class="hero-actions">
-                    <a id="hero-seu-entry" class="hero-action hero-action-primary" href="https://tyxsjpt.seu.edu.cn/h5/#/pages/home/index" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
-                        去 SEU 平台登录 <span aria-hidden="true">↗</span>
-                    </a>
-                    <button id="hero-start-tool" class="hero-action hero-action-secondary" type="button">
-                        我已有 Token，开始填写 <span aria-hidden="true">→</span>
+                <section id="hero-quick-panel" class="hero-quick-panel" aria-labelledby="hero-panel-title">
+                    <div class="hero-panel-heading">
+                        <img src="assets/reference/seu-run-icon.png" alt="" width="48" height="48">
+                        <div>
+                            <span>STEP 02—03</span>
+                            <h2 id="hero-panel-title">填写运动记录</h2>
+                            <p>先完成基础信息，再继续上传照片。</p>
+                        </div>
+                    </div>
+
+                    <div class="hero-field hero-field-full">
+                        <label for="input-token" class="form-label">Token</label>
+                        <div class="token-input-wrap">
+                            <input type="password" id="input-token" class="form-control" placeholder="粘贴从 SEU 平台复制的 Token" autocomplete="off" spellcheck="false">
+                            <button type="button" class="token-toggle" data-token-target="input-token" aria-pressed="false">显示</button>
+                        </div>
+                        <small class="security-note">仅在当前页面内存中使用，不写入浏览器存储。</small>
+                        <span id="token-validation-message" class="text-danger" style="display: none;">❌ Token 不符合规范</span>
+                    </div>
+
+                    <div class="hero-field hero-field-full">
+                        <label for="select-route_info" class="form-label">运动场地</label>
+                        <select id="select-route_info" class="form-select">
+                            <option value="403640128840458727">小营田径场（四牌楼校区）</option>
+                            <option value="403640128840458521">四牌楼体育场（四牌楼校区）</option>
+                            <option value="403640124545491749">橘园田径场（九龙湖校区）</option>
+                            <option value="403640124545491473">桃园田径场（九龙湖校区）</option>
+                            <option value="403640115955556355">梅园田径场（九龙湖校区）</option>
+                            <option value="403640128840458306">丁家桥体育场（丁家桥校区）</option>
+                            <option value="405863869632939014">无锡国际校区体育馆（无锡国际校区）</option>
+                        </select>
+                    </div>
+
+                    <div class="hero-panel-grid">
+                        <div class="hero-field">
+                            <label for="exercise-start_time" class="form-label">开始时间</label>
+                            <input type="datetime-local" id="exercise-start_time" class="form-control" step="1" value="">
+                        </div>
+                        <div class="hero-field">
+                            <label for="exercise-end_time" class="form-label">结束时间</label>
+                            <input type="datetime-local" id="exercise-end_time" class="form-control" step="1" value="">
+                        </div>
+                    </div>
+
+                    <div class="hero-panel-tools">
+                        <button type="button" id="btn-random-time" class="btn btn-outline-secondary btn-sm">随机时间</button>
+                        <button type="button" id="btn-random-track" class="btn btn-outline-info btn-sm">生成随机轨迹</button>
+                    </div>
+                    <span id="time-range-message" class="text-danger" style="display: none;">❌ 所选时间超出跑操时间范围</span>
+                    <small id="time-source-note" class="security-note">优先使用上海网络时间；不可用时回退到本机时间。</small>
+
+                    <button id="hero-continue-tool" class="hero-continue-tool" type="button" data-open-mode="run">
+                        继续上传运动照片 <span aria-hidden="true">→</span>
                     </button>
-                </div>
-                <p class="hero-network-note"><span aria-hidden="true">●</span> 若入口在校外无法打开，请先连接校园网或学校提供的网络访问方式；本页不会代替 SEU 身份认证。</p>
-            </div>
-            <div class="hero-campus-label" aria-hidden="true">
-                <span>CAMPUS ROUTE</span>
-                <strong>TRACE · CHECK · SUBMIT</strong>
+                    <p class="hero-panel-footnote">照片和检查结果只会在你确认提交后发送。</p>
+                </section>
             </div>
         </header>
 
         <div class="card shadow-sm" id="workbench">
             <div class="card-body">
-                <form id="main-form">
                     <div class="mb-3">
                         <!-- 功能选择标签页 -->
                         <div class="border-bottom mb-4">
@@ -2563,80 +3773,13 @@
                     <!-- 一键跑步 -->
                     <div id="mode-content-run" class="mode-content" role="tabpanel" aria-labelledby="tab-run" aria-hidden="false">
                         <div id="run-area">
-                            <div class="workflow-brief" aria-label="单次提交流程">
-                                <div class="workflow-brief-item">
-                                    <span>01</span>
-                                    <div><strong>准备</strong><small>Token、场地、时间</small></div>
+                            <div class="workbench-intro">
+                                <div>
+                                    <span class="section-eyebrow">STEP 03—04 · PHOTO &amp; REVIEW</span>
+                                    <h2>上传照片，检查后提交</h2>
+                                    <p>基础信息已经放在首屏右侧；这里集中完成照片预览和最后确认。</p>
                                 </div>
-                                <div class="workflow-brief-item">
-                                    <span>02</span>
-                                    <div><strong>检查</strong><small>照片与课表冲突</small></div>
-                                </div>
-                                <div class="workflow-brief-item">
-                                    <span>03</span>
-                                    <div><strong>确认</strong><small>最后一步才会提交</small></div>
-                                </div>
-                            </div>
-                            <!-- Token 输入 -->
-                            <div class="mb-3">
-                                <div class="mb-3">
-                                    <label for="input-token" class="form-label">Token 输入</label>
-                                    <div class="token-input-wrap">
-                                        <input type="password" id="input-token" class="form-control" placeholder="请输入您的 Token" autocomplete="off" spellcheck="false">
-                                        <button type="button" class="token-toggle" data-token-target="input-token" aria-pressed="false">显示</button>
-                                    </div>
-                                    <small class="security-note">Token 只在当前页面内存中使用，不会写入浏览器存储。</small>
-                                </div>
-                                <!-- 添加判断：在每次token值改变时运行 ml_local_check_token_form, 如果不合乎规范，在下面用红色字给出提示-->
-                                <div class="mb-3">
-                                    <span id="token-validation-message" class="text-danger" style="display: none;">❌ Token 不符合规范</span>
-                                </div>
-                            </div>
-
-                            <!-- 场地选择 -->
-                            <div class="mb-3">
-                                <label for="select-route_info" class="form-label">场地选择</label>
-                                <select id="select-route_info" class="form-select">
-                                    <!-- value is plan_id -->
-                                    <option value="403640128840458727">小营田径场 (四牌楼校区)</option>
-                                    <option value="403640128840458521">四牌楼体育场 (四牌楼校区)</option>
-                                    <option value="403640124545491749">橘园田径场 (九龙湖校区)</option>
-                                    <option value="403640124545491473">桃园田径场 (九龙湖校区)</option>
-                                    <option value="403640115955556355">梅园田径场 (九龙湖校区)</option>
-                                    <option value="403640128840458306">丁家桥体育场 (丁家桥校区)</option>
-                                    <option value="405863869632939014">无锡国际校区体育馆 (无锡国际校区)</option>
-                                </select>
-                            </div>
-
-                            <!-- 起止时间选择 -->
-                            <div class="mb-3">
-                                <!-- 选择起止时间的选择框，默认时间为当前时间，需要精确到秒 -->
-                                <div class="row">
-                                    <!-- 开始时间 -->
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="exercise-start_time" class="form-label">运动开始时间</label>
-                                            <input type="datetime-local" id="exercise-start_time" class="form-control" step=1 value="" >
-                                        </div>
-                                    </div>
-                                    <!-- 结束时间 -->
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="exercise-end_time" class="form-label">运动结束时间</label>
-                                            <input type="datetime-local" id="exercise-end_time" class="form-control" step=1 value="">
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- 快捷工具按钮 -->
-                                <div class="mb-3 d-flex gap-2">
-                                    <button type="button" id="btn-random-time" class="btn btn-outline-secondary btn-sm">🎲 随机时间</button>
-                                    <button type="button" id="btn-random-track" class="btn btn-outline-info btn-sm">🎯 生成随机轨迹</button>
-                                </div>
-                                <!-- 添加判断：在每次token值改变时检查-->
-                                <div class="mb-3">
-                                    <span id="time-range-message" class="text-danger" style="display: none;">❌ 所选时间超出跑操时间范围</span>
-                                    <small id="time-source-note" class="security-note">优先使用上海网络时间；服务不可用时会回退到本机时间。</small>
-                                </div>
+                                <button type="button" class="workbench-back-link" data-jump-target="hero-quick-panel">返回修改基础信息 <span aria-hidden="true">↑</span></button>
                             </div>
 
                             <!-- 运动照片 -->
@@ -2780,26 +3923,44 @@
                                 <div class="reference-strip-head">
                                     <div>
                                         <span class="section-eyebrow">ORIGINAL PROJECT WALKTHROUGH</span>
-                                        <h2 id="reference-strip-title">按原项目截图，三眼看懂</h2>
+                                        <h2 id="reference-strip-title">原项目流程，一步一张大图</h2>
                                     </div>
-                                    <p>点击任意截图可在新窗口查看原图。</p>
+                                    <p>点击图片进入全屏查看，按 Esc 即可关闭。</p>
                                 </div>
                                 <div class="reference-gallery">
-                                    <a class="reference-shot" href="assets/reference/original-main-page.png" target="_blank" rel="noopener noreferrer">
-                                        <span class="reference-index">01</span>
-                                        <img src="assets/reference/original-main-page.png" alt="原项目主界面截图" loading="lazy">
-                                        <span class="reference-caption"><strong>认识原项目界面</strong><small>确认 Token、时间与照片的填写位置</small></span>
-                                    </a>
-                                    <a class="reference-shot" href="assets/reference/token-console.png" target="_blank" rel="noopener noreferrer">
-                                        <span class="reference-index">02</span>
-                                        <img src="assets/reference/token-console.png" alt="浏览器控制台中获取 Token 的原项目截图" loading="lazy">
-                                        <span class="reference-caption"><strong>找到 Token</strong><small>登录 SEU 后定位 request.headers.token</small></span>
-                                    </a>
-                                    <a class="reference-shot" href="assets/reference/success-dialog.png" target="_blank" rel="noopener noreferrer">
-                                        <span class="reference-index">03</span>
-                                        <img src="assets/reference/success-dialog.png" alt="原项目提交成功提示截图" loading="lazy">
-                                        <span class="reference-caption"><strong>确认提交结果</strong><small>只在看到明确反馈后判断本次完成</small></span>
-                                    </a>
+                                    <button type="button" class="reference-shot" data-lightbox-src="assets/reference/original-main-page.png" data-lightbox-caption="步骤 1：认识原项目界面">
+                                        <span class="reference-caption">
+                                            <span class="reference-index">01</span>
+                                            <strong>认识原项目界面</strong>
+                                            <small>先确认 Token、时间、场地和照片分别在哪里填写。</small>
+                                            <span class="reference-zoom-hint">查看原尺寸 <span aria-hidden="true">↗</span></span>
+                                        </span>
+                                        <span class="reference-media">
+                                            <img src="assets/reference/original-main-page.png" alt="原项目主界面截图" loading="lazy">
+                                        </span>
+                                    </button>
+                                    <button type="button" class="reference-shot" data-lightbox-src="assets/reference/token-console.png" data-lightbox-caption="步骤 2：在浏览器控制台找到 Token">
+                                        <span class="reference-caption">
+                                            <span class="reference-index">02</span>
+                                            <strong>找到并复制 Token</strong>
+                                            <small>登录 SEU 后打开开发者工具，定位 request.headers.token。</small>
+                                            <span class="reference-zoom-hint">查看原尺寸 <span aria-hidden="true">↗</span></span>
+                                        </span>
+                                        <span class="reference-media">
+                                            <img src="assets/reference/token-console.png" alt="浏览器控制台中获取 Token 的原项目截图" loading="lazy">
+                                        </span>
+                                    </button>
+                                    <button type="button" class="reference-shot" data-lightbox-src="assets/reference/success-dialog.png" data-lightbox-caption="步骤 3：确认提交结果">
+                                        <span class="reference-caption">
+                                            <span class="reference-index">03</span>
+                                            <strong>确认提交结果</strong>
+                                            <small>只有看到页面返回明确成功信息后，才判断本次记录完成。</small>
+                                            <span class="reference-zoom-hint">查看原尺寸 <span aria-hidden="true">↗</span></span>
+                                        </span>
+                                        <span class="reference-media">
+                                            <img src="assets/reference/success-dialog.png" alt="原项目提交成功提示截图" loading="lazy">
+                                        </span>
+                                    </button>
                                 </div>
                             </section>
 
@@ -2965,10 +4126,19 @@
                             </div>
                         </div>
                     </div>
-                </form>
             </div>
         </div>
+        </form>
     </div>
+
+    <div id="image-lightbox" class="image-lightbox" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="image-lightbox-caption">
+        <button type="button" class="image-lightbox-close" aria-label="关闭大图">×</button>
+        <figure class="image-lightbox-stage">
+            <img id="image-lightbox-content" src="" alt="">
+            <figcaption id="image-lightbox-caption"></figcaption>
+        </figure>
+    </div>
+
     <!-- footer -->
     <footer class="footer mt-5 py-3 bg-light border-top">
         <div class="container text-center text-muted small">
@@ -7465,7 +8635,7 @@ async function ml_getRandomTrackForVenue(planId) {
                         content.setAttribute('aria-hidden', String(!isSelected));
                     });
                 }
-                function openWorkbench(selectedMode, shouldFocusToken) {
+                function openWorkbench(selectedMode) {
                     activateTab(selectedMode);
                     if (window.history && typeof window.history.replaceState === 'function') {
                         window.history.replaceState(null, '', `#tab-${selectedMode}`);
@@ -7475,31 +8645,75 @@ async function ml_getRandomTrackForVenue(planId) {
                         var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                         workbench.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
                     }
-                    if (shouldFocusToken) {
-                        var tokenInput = document.getElementById('input-token');
-                        if (tokenInput) {
-                            tokenInput.focus({ preventScroll: true });
-                        }
-                    }
                 }
                 tabItems.forEach(tab => {
                     tab.addEventListener('click', function(e) {
                         e.preventDefault();
                         const selectedMode = tab.getAttribute('data-mode');
-                        openWorkbench(selectedMode, false);
+                        openWorkbench(selectedMode);
                     });
                 });
                 document.querySelectorAll('[data-open-mode]').forEach(function(trigger) {
                     trigger.addEventListener('click', function() {
-                        openWorkbench(trigger.getAttribute('data-open-mode'), false);
+                        openWorkbench(trigger.getAttribute('data-open-mode'));
                     });
                 });
                 var heroStartTool = document.getElementById('hero-start-tool');
                 if (heroStartTool) {
                     heroStartTool.addEventListener('click', function() {
-                        openWorkbench('run', true);
+                        activateTab('run');
+                        var tokenInput = document.getElementById('input-token');
+                        if (tokenInput) {
+                            tokenInput.focus({ preventScroll: true });
+                        }
                     });
                 }
+                document.querySelectorAll('[data-jump-target]').forEach(function(trigger) {
+                    trigger.addEventListener('click', function() {
+                        var target = document.getElementById(trigger.getAttribute('data-jump-target'));
+                        if (target) {
+                            var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                            target.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' });
+                        }
+                    });
+                });
+
+                var imageLightbox = document.getElementById('image-lightbox');
+                var lightboxImage = document.getElementById('image-lightbox-content');
+                var lightboxCaption = document.getElementById('image-lightbox-caption');
+                var lightboxClose = imageLightbox ? imageLightbox.querySelector('.image-lightbox-close') : null;
+                var lightboxLastTrigger = null;
+                function closeImageLightbox() {
+                    if (!imageLightbox) return;
+                    imageLightbox.classList.remove('is-open');
+                    imageLightbox.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('lightbox-open');
+                    if (lightboxLastTrigger) lightboxLastTrigger.focus({ preventScroll: true });
+                }
+                document.querySelectorAll('[data-lightbox-src]').forEach(function(trigger) {
+                    trigger.addEventListener('click', function() {
+                        if (!imageLightbox || !lightboxImage || !lightboxCaption) return;
+                        lightboxLastTrigger = trigger;
+                        lightboxImage.src = trigger.getAttribute('data-lightbox-src');
+                        lightboxImage.alt = trigger.querySelector('img') ? trigger.querySelector('img').alt : '';
+                        lightboxCaption.textContent = trigger.getAttribute('data-lightbox-caption') || '';
+                        imageLightbox.classList.add('is-open');
+                        imageLightbox.setAttribute('aria-hidden', 'false');
+                        document.body.classList.add('lightbox-open');
+                        if (lightboxClose) lightboxClose.focus({ preventScroll: true });
+                    });
+                });
+                if (lightboxClose) lightboxClose.addEventListener('click', closeImageLightbox);
+                if (imageLightbox) {
+                    imageLightbox.addEventListener('click', function(event) {
+                        if (event.target === imageLightbox) closeImageLightbox();
+                    });
+                }
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape' && imageLightbox && imageLightbox.classList.contains('is-open')) {
+                        closeImageLightbox();
+                    }
+                });
                 var initialModeMatch = window.location.hash.match(/^#tab-(run|guide|batch)$/);
                 activateTab(initialModeMatch ? initialModeMatch[1] : 'run');
             })();
