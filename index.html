@@ -4297,37 +4297,37 @@
                                     <p>点击图片进入全屏查看，按 Esc 即可关闭。</p>
                                 </div>
                                 <div class="reference-gallery">
-                                    <button type="button" class="reference-shot" data-lightbox-src="assets/hero-track-v1.png" data-lightbox-caption="步骤 1：打开东南大学体育管理 → 阳光跑">
+                                    <button type="button" class="reference-shot" data-lightbox-src="assets/hero-track-v1.png" data-lightbox-caption="步骤 1：启动本地桥接服务">
                                         <span class="reference-caption">
                                             <span class="reference-index">01</span>
-                                            <strong>打开桥接服务和小程序</strong>
-                                            <small>先双击 get-token.bat，再进入“阳光跑”，让微信小程序发起一次数据请求。</small>
+                                            <strong>启动本地桥接服务</strong>
+                                            <small>双击 <code>tools/token-tool/get-token.bat</code>，看到 <code>listening on http://127.0.0.1:17864</code> 后保持窗口不关。提取 Token 和提交记录都要靠它。</small>
                                             <span class="reference-zoom-hint">查看原尺寸 <span aria-hidden="true">↗</span></span>
                                         </span>
                                         <span class="reference-media">
-                                            <img src="assets/hero-track-v1.png" alt="SEU 跑步路线视觉" loading="lazy">
+                                            <img src="assets/hero-track-v1.png" alt="桥接服务窗口" loading="lazy">
                                         </span>
                                     </button>
-                                    <button type="button" class="reference-shot" data-lightbox-src="assets/light-route-map-v1.webp" data-lightbox-caption="步骤 2：启动本地桥接服务">
+                                    <button type="button" class="reference-shot" data-lightbox-src="assets/light-route-map-v1.webp" data-lightbox-caption="步骤 2：打开小程序并提取 Token">
                                         <span class="reference-caption">
                                             <span class="reference-index">02</span>
-                                            <strong>启动本地桥接服务</strong>
-                                            <small>双击 <code>tools/token-tool/get-token.bat</code>，保持黑色窗口运行，不要关闭。</small>
+                                            <strong>打开小程序并提取 Token</strong>
+                                            <small>进入“东南大学体育管理 → 阳光跑”，打开会加载数据的页面让小程序发一次请求，再回本页点“从微信小程序提取 Token”。</small>
                                             <span class="reference-zoom-hint">查看原尺寸 <span aria-hidden="true">↗</span></span>
                                         </span>
                                         <span class="reference-media">
-                                            <img src="assets/light-route-map-v1.webp" alt="跑步路线地图视觉" loading="lazy">
+                                            <img src="assets/light-route-map-v1.webp" alt="小程序与 Token 提取" loading="lazy">
                                         </span>
                                     </button>
-                                    <button type="button" class="reference-shot" data-lightbox-src="assets/light-photo-workflow-v1.webp" data-lightbox-caption="步骤 3：点击提取并提交">
+                                    <button type="button" class="reference-shot" data-lightbox-src="assets/light-photo-workflow-v1.webp" data-lightbox-caption="步骤 3：生成时间轨迹并提交">
                                         <span class="reference-caption">
                                             <span class="reference-index">03</span>
-                                            <strong>点击提取并提交</strong>
-                                            <small>点击页面上的提取按钮，Token 会自动填入；再完成时间、照片和本地预检。</small>
+                                            <strong>生成时间轨迹并提交</strong>
+                                            <small>选场地后点“一键生成时间+轨迹”，上传开始与结束照片，确认提交前检查通过，再点提交。</small>
                                             <span class="reference-zoom-hint">查看原尺寸 <span aria-hidden="true">↗</span></span>
                                         </span>
                                         <span class="reference-media">
-                                            <img src="assets/light-photo-workflow-v1.webp" alt="照片提交流程视觉" loading="lazy">
+                                            <img src="assets/light-photo-workflow-v1.webp" alt="生成时间轨迹并提交" loading="lazy">
                                         </span>
                                     </button>
                                 </div>
@@ -4356,11 +4356,12 @@
                                     </li>
                                     <li>
                                         <div>
-                                            <strong>检查并提交</strong>
-                                            <p class="guide-note">确认输入框已自动填入 Token，再完成日期、照片和预检；桥接服务也会复制一份到剪贴板作为备用。</p>
+                                            <strong>4. 确认 Token 已填入</strong>
+                                            <p class="guide-note">输入框会自动填入 Token，桥接服务同时复制一份到剪贴板作为备用。填入后页面会立刻校验，并从服务端拉取当前场地与规则。</p>
                                         </div>
                                     </li>
                                 </ol>
+                                <p class="guide-note">桥接窗口在整个使用过程中都要保持运行：提取 Token 靠它读微信进程内存，提交记录也要经它转发——服务端的跨域白名单不允许浏览器直接调用小程序接口。</p>
                             </section>
 
                             <section class="guide-section">
@@ -4368,18 +4369,18 @@
                                 <div class="guide-steps guide-steps-primary">
                                     <div class="guide-step">
                                         <span>01</span>
-                                        <strong>填写基础信息</strong>
-                                        <p>粘贴 Blade-Auth Token，选择同一天内的场地、开始时间与结束时间。</p>
+                                        <strong>填 Token 并选场地</strong>
+                                        <p>粘贴 Blade-Auth Token，选择运动场地。Token 校验通过后，场地与规则会从服务端实时刷新。</p>
                                     </div>
                                     <div class="guide-step">
                                         <span>02</span>
-                                        <strong>准备照片</strong>
-                                        <p>分别上传开始和结束照片，并先查看页面预览。</p>
+                                        <strong>一键生成时间与轨迹</strong>
+                                        <p>点“一键生成时间+轨迹”：先按规则配速反推距离生成轨迹，再用轨迹长度算出时长，并安排在规定的锻炼时间内。三者始终自洽，也可手动改。</p>
                                     </div>
                                     <div class="guide-step">
                                         <span>03</span>
-                                        <strong>执行本地预检</strong>
-                                        <p>检查 Token 形态、时间范围、照片与可选课表冲突。</p>
+                                        <strong>准备照片并预检</strong>
+                                        <p>上传开始和结束照片后执行本地预检：Token 形态、时间范围、照片、当天是否已有记录，以及可选的课表冲突。</p>
                                     </div>
                                     <div class="guide-step">
                                         <span>04</span>
@@ -4393,7 +4394,7 @@
                                 <div>
                                     <span class="section-eyebrow">OPTIONAL CHECKS</span>
                                     <div class="guide-section-title">进阶功能保持可选</div>
-                                    <p class="guide-note">课表导入、照片时间阻止、随机轨迹与批量失败重试都不会挡住最短主流程。只有你主动启用对应检查时，它们才参与提交判断。</p>
+                                    <p class="guide-note">课表导入、照片时间阻止与批量失败重试都不会挡住最短主流程。只有你主动启用对应检查时，它们才参与提交判断。右侧「我的锻炼记录」面板只读展示服务端记录，与提交判定无关。</p>
                                 </div>
                                 <button type="button" class="btn btn-outline-primary" data-open-mode="run">返回填写区 <span aria-hidden="true">→</span></button>
                             </section>
