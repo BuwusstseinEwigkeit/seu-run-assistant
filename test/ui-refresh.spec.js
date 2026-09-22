@@ -115,7 +115,7 @@ test('首屏实际表单与大图教程在桌面和手机均可读', async ({ pa
   await expect(page.locator('#run-submit-status')).toHaveAttribute('aria-live', 'polite');
 
   await page.locator('#tab-guide').click();
-  await expect(page.locator('#project-reference-strip .reference-shot img')).toHaveCount(3);
+  await expect(page.locator('#project-reference-strip .reference-shot img')).toHaveCount(4);
   const firstReferenceSize = await page.locator('#project-reference-strip .reference-shot img').first().boundingBox();
   expect(firstReferenceSize.width).toBeGreaterThanOrEqual(560);
 
