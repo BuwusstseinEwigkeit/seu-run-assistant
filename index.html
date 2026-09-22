@@ -8250,6 +8250,17 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 if (ml_plan_ids.indexOf(ml_kept) >= 0) { ml_select.value = ml_kept; }
             });
             var ml_chosen_plan_id = ml_plan_ids.indexOf(ml_previous_plan_id) >= 0 ? ml_previous_plan_id : ml_plan_ids[0];
+            if (ml_previous_plan_id && ml_chosen_plan_id !== ml_previous_plan_id) {
+                // 原来是内置旧场地表里的选择，服务端列表里已经没有它了。
+                // 静默换场地会让用户提交到不是自己选的地方，所以明确说出来。
+                console.warn("原选择的场地 " + ml_previous_plan_id + " 不在服务端列表中，改用 " +
+                    ml_all_route_info[ml_chosen_plan_id].route_name);
+                var ml_route_notice = document.getElementById("run-submit-status");
+                if (ml_route_notice) {
+                    ml_route_notice.textContent = "场地列表已刷新：原选择已失效，已切换为「" +
+                        ml_all_route_info[ml_chosen_plan_id].route_name + "」，请确认后再提交。";
+                }
+            }
             ml_choose_route_data = ml_all_route_info[ml_chosen_plan_id];
             ml_student_choose_route_data = ml_student_route_all_info[ml_chosen_plan_id];
             var ml_main_select = document.getElementById("select-route_info");
@@ -9667,6 +9678,27 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 ml_set_simulated_delay(field.value, field);
                 field.addEventListener('input', function() { ml_set_simulated_delay(this.value, this); });
             });
+            // Token 变化后刷新服务端场地表。原来只在「校验 Token」时才刷新，
+            // 只粘贴/提取 Token 而不点校验的用户会一直看着内置的旧场地表，
+            // 里面那些 rule_id / plan_id 早已失效，提交必然 500。
+            (function() {
+                var tokenInputForRoutes = document.getElementById('input-token');
+                if (!tokenInputForRoutes) { return; }
+                var routeReloadTimer = null;
+                var reloadRoutes = function() {
+                    var token = tokenInputForRoutes.value.trim();
+                    if (!token) { return; }
+                    clearTimeout(routeReloadTimer);
+                    routeReloadTimer = setTimeout(function() {
+                        ml_load_route_data_from_server(token);
+                    }, 500);
+                };
+                tokenInputForRoutes.addEventListener('change', reloadRoutes);
+                // 提取按钮填完 Token 后再补一次，此时不会有 change 事件
+                var extractButton = document.getElementById('hero-extract-token');
+                if (extractButton) { extractButton.addEventListener('click', function() { setTimeout(reloadRoutes, 1200); }); }
+            })();
+
             // 我的锻炼记录：展开时按需加载，「刷新」和换月都会重新拉取
             (function() {
                 var historyDetails = document.getElementById('history-details');
