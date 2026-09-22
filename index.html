@@ -7480,22 +7480,9 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                     resampled[gi].lng = fixed.lng;
                 }
             }
-            // 2) 模拟偶尔的短暂停顿（2-4个连续重复点，模拟等红灯/系鞋带）
-            var numPauses = Math.floor(Math.random() * 3); // 0-2 次停顿
-            for (var pi = 0; pi < numPauses; pi++) {
-                var pauseIdx = Math.floor(Math.random() * (resampled.length - 3)) + 1;
-                var pauseDuration = 2 + Math.floor(Math.random() * 3); // 2-4 个点
-                for (var pd = 1; pd < pauseDuration && (pauseIdx + pd) < resampled.length; pd++) {
-                    // 停顿点略有 GPS 飘移但基本不动
-                    resampled[pauseIdx + pd].lat = resampled[pauseIdx].lat + (Math.random() - 0.5) * 0.000005;
-                    resampled[pauseIdx + pd].lng = resampled[pauseIdx].lng + (Math.random() - 0.5) * 0.000005;
-                    if (!ml_isPointInPolygon(resampled[pauseIdx + pd].lat, resampled[pauseIdx + pd].lng, polygon)) {
-                        var pFixed = ml_movePointInsidePolygon(resampled[pauseIdx + pd].lat, resampled[pauseIdx + pd].lng, polygon, polyCenter);
-                        resampled[pauseIdx + pd].lat = pFixed.lat;
-                        resampled[pauseIdx + pd].lng = pFixed.lng;
-                    }
-                }
-            }
+            // 原来这里会插入 0-2 段"短暂停顿"（连续近乎重合的点）来模拟等红灯。
+            // 校内跑操不存在红绿灯路口的等待，去掉即可：这些点既不真实，
+            // 又会让轨迹里出现零位移段，给服务端的里程计算添麻烦。
             // 重新计算漂移后的总距离
             newDist = 0;
             for (var k = 0; k < resampled.length - 1; k++) {
@@ -7842,10 +7829,22 @@ function ml_distanceToPolygon(lat, lng, polygon) {
 
             var sameCalendarDate = startTime.getFullYear() === endTime.getFullYear() &&
                 startTime.getMonth() === endTime.getMonth() && startTime.getDate() === endTime.getDate();
-            if (!sameCalendarDate || startTime < ruleStartTime || endTime > ruleEndTime || startTime >= endTime) {
-                timeRangeMessage.textContent = !sameCalendarDate
-                    ? "❌ 开始和结束时间必须是同一天（" + ml_choose_route_data.rule_start_time + "-" + ml_choose_route_data.rule_end_time + "）"
-                    : "❌ 所选时间应在 " + ml_choose_route_data.rule_start_time + " 到 " + ml_choose_route_data.rule_end_time + " 之间，且结束时间应晚于开始时间";
+            // 三种失败分开报，别挤在一句话里；服务端下发的时段是 "06:00:00"，
+            // 截成 "06:00" 显示，否则文案里会出现多余的秒。
+            var ruleWindowText = String(ml_choose_route_data.rule_start_time).slice(0, 5) + "-" +
+                String(ml_choose_route_data.rule_end_time).slice(0, 5);
+            if (!sameCalendarDate) {
+                timeRangeMessage.textContent = "❌ 开始和结束时间必须是同一天（可锻炼时段 " + ruleWindowText + "）";
+                timeRangeMessage.style.display = "block";
+                return false;
+            }
+            if (startTime >= endTime) {
+                timeRangeMessage.textContent = "❌ 结束时间必须晚于开始时间";
+                timeRangeMessage.style.display = "block";
+                return false;
+            }
+            if (startTime < ruleStartTime || endTime > ruleEndTime) {
+                timeRangeMessage.textContent = "❌ 所选时间超出可锻炼时段（" + ruleWindowText + "）";
                 timeRangeMessage.style.display = "block";
                 return false;
             }
@@ -7888,10 +7887,22 @@ function ml_distanceToPolygon(lat, lng, polygon) {
 
             var sameCalendarDate = startTime.getFullYear() === endTime.getFullYear() &&
                 startTime.getMonth() === endTime.getMonth() && startTime.getDate() === endTime.getDate();
-            if (!sameCalendarDate || startTime < ruleStartTime || endTime > ruleEndTime || startTime >= endTime) {
-                timeRangeMessage.textContent = !sameCalendarDate
-                    ? "❌ 开始和结束时间必须是同一天（" + ml_choose_route_data.rule_start_time + "-" + ml_choose_route_data.rule_end_time + "）"
-                    : "❌ 所选时间应在 " + ml_choose_route_data.rule_start_time + " 到 " + ml_choose_route_data.rule_end_time + " 之间，且结束时间应晚于开始时间";
+            // 三种失败分开报，别挤在一句话里；服务端下发的时段是 "06:00:00"，
+            // 截成 "06:00" 显示，否则文案里会出现多余的秒。
+            var ruleWindowText = String(ml_choose_route_data.rule_start_time).slice(0, 5) + "-" +
+                String(ml_choose_route_data.rule_end_time).slice(0, 5);
+            if (!sameCalendarDate) {
+                timeRangeMessage.textContent = "❌ 开始和结束时间必须是同一天（可锻炼时段 " + ruleWindowText + "）";
+                timeRangeMessage.style.display = "block";
+                return false;
+            }
+            if (startTime >= endTime) {
+                timeRangeMessage.textContent = "❌ 结束时间必须晚于开始时间";
+                timeRangeMessage.style.display = "block";
+                return false;
+            }
+            if (startTime < ruleStartTime || endTime > ruleEndTime) {
+                timeRangeMessage.textContent = "❌ 所选时间超出可锻炼时段（" + ruleWindowText + "）";
                 timeRangeMessage.style.display = "block";
                 return false;
             }
