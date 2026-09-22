@@ -7385,25 +7385,23 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             var numLaps = Math.max(1, Math.ceil(targetDistanceM / ellipsePerim));
             numLaps = Math.min(numLaps, 6); // 最多 6 圈
 
-            // 生成轨迹：绕椭圆跑 numLaps 圈，每圈加 GPS 漂移 + 相位抖动
+            // 生成轨迹：绕椭圆跑 numLaps 圈。每圈椭圆大小略有差异、起点略有偏移，
+            // 模拟人每圈路线不会完全重合。这里生成的是平滑椭圆点，不加逐点噪声——
+            // 逐点独立抖动会把轨迹变成锯齿，不像真实 GPS；真实误差在重采样后统一
+            // 用平滑随机游走叠加。
             var track = [];
             for (var lap = 0; lap < numLaps; lap++) {
-                var phaseJitter = (Math.random() - 0.5) * 0.08;
+                var lapScale = 0.96 + Math.random() * 0.08;   // 每圈缩放 0.96~1.04
+                var phaseJitter = Math.random() * 0.15;       // 每圈起点偏移
                 for (var p = 0; p < ptsPerLap; p++) {
                     var theta = (p / ptsPerLap) * 2 * Math.PI + phaseJitter;
-                    var xM = majorAxisM * Math.cos(theta);   // 沿长轴
-                    var yM = minorAxisM * Math.sin(theta);   // 沿短轴
+                    var xM = majorAxisM * lapScale * Math.cos(theta);   // 沿长轴
+                    var yM = minorAxisM * lapScale * Math.sin(theta);   // 沿短轴
                     var dLat, dLng;
                     if (majorAlongLng) { dLng = xM / lngMeters; dLat = yM / latMeters; }
                     else { dLat = xM / latMeters; dLng = yM / lngMeters; }
-                    var lat = polyCenter.lat + dLat + (Math.random() - 0.5) * noiseLevel * 2;
-                    var lng = polyCenter.lng + dLng + (Math.random() - 0.5) * noiseLevel * 2;
-                    // 边界验证
-                    if (!ml_isPointInPolygon(lat, lng, polygon)) {
-                        var clamped = ml_movePointInsidePolygon(lat, lng, polygon, polyCenter);
-                        lat = clamped.lat;
-                        lng = clamped.lng;
-                    }
+                    var lat = polyCenter.lat + dLat;
+                    var lng = polyCenter.lng + dLng;
                     track.push({ lat: lat, lng: lng, sortNum: track.length + 1 });
                 }
             }
@@ -7486,13 +7484,19 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             }
 
             // ---- GPS 真实感后处理 ----
-            // 1) 添加 GPS 精度漂移：模拟手机 GPS 的随机抖动（±2-5米）
+            // 1) 叠加平滑 GPS 漂移。真实 GPS 误差是连续缓慢变化的，不是逐点独立
+            //    随机；逐点独立抖动会让轨迹变成锯齿。这里用随机游走：每一步在上一
+            //    步基础上做微小偏移，误差被限制在 ±3 米内，相邻点之间平滑衔接。
+            var driftLat = 0, driftLng = 0;
+            var maxDrift = 0.000027;   // ±3 米
+            var driftStep = 0.000005;  // 每点最多 ±0.5 米变化
             for (var gi = 0; gi < resampled.length; gi++) {
-                // GPS 漂移量：2-5米 ≈ 0.000018-0.000045度
-                var driftMagnitude = 0.000018 + Math.random() * 0.000027;
-                var driftAngle = Math.random() * Math.PI * 2;
-                resampled[gi].lat += Math.cos(driftAngle) * driftMagnitude;
-                resampled[gi].lng += Math.sin(driftAngle) * driftMagnitude;
+                driftLat += (Math.random() - 0.5) * 2 * driftStep;
+                driftLng += (Math.random() - 0.5) * 2 * driftStep;
+                driftLat = Math.max(-maxDrift, Math.min(maxDrift, driftLat));
+                driftLng = Math.max(-maxDrift, Math.min(maxDrift, driftLng));
+                resampled[gi].lat += driftLat;
+                resampled[gi].lng += driftLng;
                 // 确保漂移后仍在边界内
                 if (!ml_isPointInPolygon(resampled[gi].lat, resampled[gi].lng, polygon)) {
                     var fixed = ml_movePointInsidePolygon(resampled[gi].lat, resampled[gi].lng, polygon, polyCenter);
