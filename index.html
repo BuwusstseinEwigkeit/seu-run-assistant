@@ -8301,11 +8301,43 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             return null;
         }
 
-        function ml_describe_record(ml_record) {
+        /*
+        ML Remark: 真实字段语义（来自 getRecordByMonthOrWeek 实际返回）
+            exerciseStatus  0 = 有效，1 = 无效，-1 = 进行中（没有 2）
+            isUse           1 = 已计入锻炼次数
+        注意「同一天只计入一次」的含义是"一天只有一条会生效"，而不是"一天只能提交一次"：
+        实测 2026-09-21 与 09-22 都是先有一条无效记录、后面那条仍然有效。
+        所以只有当天已存在**有效**记录时才该拦下；当天只有无效记录时不能拦。
+        */
+        function ml_is_counted_record(ml_record) {
+            return Number(ml_record.isUse) === 1 || Number(ml_record.exerciseStatus) === 0;
+        }
+
+        function ml_record_status_text(ml_record) {
             var ml_status = Number(ml_record.exerciseStatus);
-            var ml_status_text = ml_status === -1 ? "进行中"
-                : (ml_status === 1 ? "无效" : (ml_status === 2 ? "有效" : "状态 " + ml_status));
-            return (ml_record.recordTime || "?") + " · " + (ml_record.routeName || "未知场地") + " · " + ml_status_text;
+            if (ml_status === 0) { return "有效"; }
+            if (ml_status === 1) { return "无效"; }
+            if (ml_status === -1) { return "进行中"; }
+            return "状态 " + ml_status;
+        }
+
+        function ml_record_status_marker(ml_record) {
+            var ml_status = Number(ml_record.exerciseStatus);
+            if (ml_status === 0) { return "✅"; }
+            if (ml_status === 1) { return "❌"; }
+            return "⏳";
+        }
+
+        function ml_describe_record(ml_record) {
+            var ml_parts = [ml_record.recordTime || "?"];
+            if (ml_record.routeName) { ml_parts.push(ml_record.routeName); }
+            if (ml_record.routeRule) { ml_parts.push(ml_record.routeRule); }
+            if (ml_record.strExerciseTimes) { ml_parts.push("用时 " + ml_record.strExerciseTimes); }
+            if (ml_record.routeKilometre && Number(ml_record.routeKilometre) > 0) {
+                ml_parts.push(Number(ml_record.routeKilometre) + " km");
+            }
+            ml_parts.push(ml_record_status_text(ml_record));
+            return ml_parts.join(" · ");
         }
 
         function ml_render_history_records(ml_records) {
@@ -8323,9 +8355,8 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 var ml_status = Number(ml_record.exerciseStatus);
                 var ml_item = document.createElement("li");
                 // 用符号承载状态，即使样式类缺失也能看懂
-                ml_item.textContent = (ml_status === 2 ? "✅ " : (ml_status === 1 ? "❌ " : "⏳ ")) +
-                    ml_describe_record(ml_record);
-                if (ml_status === 2) { ml_item.className = "text-success"; }
+                ml_item.textContent = ml_record_status_marker(ml_record) + " " + ml_describe_record(ml_record);
+                if (ml_status === 0) { ml_item.className = "text-success"; }
                 else if (ml_status === 1) { ml_item.className = "text-danger"; }
                 ml_list.appendChild(ml_item);
             });
@@ -9491,13 +9522,17 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 if (targetDateForDuplicateCheck) {
                     try {
                         var existingRecordForDate = await ml_find_existing_record(targetDateForDuplicateCheck);
-                        if (existingRecordForDate) {
-                            console.error("❌ 该日期已有记录:", existingRecordForDate);
-                            ml_show_Alert("当天已有记录",
-                                "❌ " + targetDateForDuplicateCheck + " 已经有一条记录：\n" +
+                        if (existingRecordForDate && ml_is_counted_record(existingRecordForDate)) {
+                            console.error("❌ 该日期已有生效记录:", existingRecordForDate);
+                            ml_show_Alert("当天已有有效记录",
+                                "❌ " + targetDateForDuplicateCheck + " 已经有一条有效记录：\n" +
                                 ml_describe_record(existingRecordForDate) +
-                                "\n\n服务端同一天只计入一次，继续提交只会又得到一条无效记录。请换一个日期。");
+                                "\n\n同一天只会计入一次，继续提交很可能又得到一条无效记录。请换一个日期。");
                             return false;
+                        }
+                        if (existingRecordForDate) {
+                            // 当天只有无效记录时不影响本次提交（实测"先无效、后有效"是成立的）
+                            console.warn("该日期已有无效记录，继续提交:", existingRecordForDate);
                         }
                     } catch (e) {
                         // 读不到历史不影响提交本身，放行并留日志
@@ -10240,13 +10275,17 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                             // 当天已有记录就跳过这一天，避免又提交出一条无效记录
                             try {
                                 var existingRecordForDay = await ml_find_existing_record(currentDate);
-                                if (existingRecordForDay) {
+                                if (existingRecordForDay && ml_is_counted_record(existingRecordForDay)) {
                                     ml_batch_state.results.push({
                                         date: currentDate,
                                         success: false,
-                                        error: '当天已有记录：' + ml_describe_record(existingRecordForDay)
+                                        error: '当天已有有效记录：' + ml_describe_record(existingRecordForDay)
                                     });
                                     continue;
+                                }
+                                if (existingRecordForDay) {
+                                    // 只有无效记录时不跳过这一天
+                                    console.warn(currentDate + ' 已有无效记录，继续提交:', existingRecordForDay);
                                 }
                             } catch (e) {
                                 console.error('读取 ' + currentDate + ' 的历史记录失败，跳过重复检查:', e);

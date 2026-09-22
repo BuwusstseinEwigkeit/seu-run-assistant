@@ -335,7 +335,7 @@ test('按天查重：当天已有记录能被识别出来', async ({ page }) => 
           success: true,
           data: {
             recordList: [
-              { recordId: '1', recordTime: '2026-09-23', routeName: '桃园田径场', exerciseStatus: 1 }
+              { recordId: '1', recordTime: '2026-09-23', routeName: '桃园田径场', exerciseStatus: 1, isUse: 0 }
             ]
           }
         }
@@ -349,13 +349,16 @@ test('按天查重：当天已有记录能被识别出来', async ({ page }) => 
     const otherDay = await window.ml_find_existing_record('2026-09-24');
     return {
       described: sameDay ? window.ml_describe_record(sameDay) : null,
+      describedNotCounted: sameDay ? window.ml_is_counted_record(sameDay) : null,
       otherDay: otherDay
     };
   });
 
   expect(result.described).toContain('2026-09-23');
   expect(result.described).toContain('桃园田径场');
+  // exerciseStatus 0 才是有效，1 是无效；isUse 表示是否已计入次数
   expect(result.described).toContain('无效');
+  expect(result.describedNotCounted).toBe(false);
   expect(result.otherDay).toBeNull();
 });
 
@@ -375,8 +378,8 @@ test('历史记录面板展开后渲染记录', async ({ page }) => {
         success: true,
         data: {
           recordList: [
-            { recordId: '1', recordTime: '2026-09-23', routeName: '桃园田径场', exerciseStatus: 2 },
-            { recordId: '2', recordTime: '2026-09-22', routeName: '橘园田径场', exerciseStatus: 1 }
+            { recordId: '1', recordTime: '2026-09-23', routeName: '桃园田径场', routeRule: '2026~2027学年1学期锻炼任务', strExerciseTimes: '00:09:06', routeKilometre: '1.330', exerciseStatus: 0, isUse: 1 },
+            { recordId: '2', recordTime: '2026-09-22', routeName: '橘园田径场', routeRule: '2026~2027学年1学期锻炼任务', strExerciseTimes: '00:07:00', routeKilometre: '1.200', exerciseStatus: 1, isUse: 0 }
           ]
         }
       })
@@ -388,10 +391,14 @@ test('历史记录面板展开后渲染记录', async ({ page }) => {
 
   const list = page.locator('#history-record-list li');
   await expect(list).toHaveCount(2);
+  // exerciseStatus 0 = 有效（不是 2），并带上规则名称与用时
   await expect(list.nth(0)).toContainText('2026-09-23');
   await expect(list.nth(0)).toContainText('有效');
+  await expect(list.nth(0)).toContainText('2026~2027学年1学期锻炼任务');
+  await expect(list.nth(0)).toContainText('00:09:06');
   await expect(list.nth(0)).toHaveClass(/text-success/);
   await expect(list.nth(1)).toContainText('无效');
+  await expect(list.nth(1)).toContainText('00:07:00');
   await expect(list.nth(1)).toHaveClass(/text-danger/);
   await expect(page.locator('#history-summary-note')).toContainText('2 条记录');
 });
