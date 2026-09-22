@@ -36,6 +36,30 @@ test('首屏实际表单与大图教程在桌面和手机均可读', async ({ pa
       body: JSON.stringify({ ok: true, token: TEST_JWT, copied: true })
     });
   });
+  // 场地表由服务端 listRule 下发；填入 Token 后页面会拉取。返回一个假场地，
+  // 否则下拉框保持占位（route 为空），flow step 会卡在"填写"一步。
+  await page.route('http://127.0.0.1:17864/api/**', async (route) => {
+    if (route.request().url().indexOf('listRule') >= 0) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 200, success: true,
+          data: [{
+            ruleId: 'r1', routeRule: '测试锻炼任务', minTime: '4', maxTime: '12',
+            minPace: '3.3333', maxPace: '10', standardKilometre: '1.2',
+            ruleStartTime: '06:00:00', ruleEndTime: '22:30:00',
+            plans: [{
+              planId: 'p1', routeName: '测试田径场', routeKilometre: 1.2,
+              latlngs: [{ lat: 31.889, lng: 118.828 }, { lat: 31.889, lng: 118.830 }, { lat: 31.891, lng: 118.830 }, { lat: 31.891, lng: 118.828 }]
+            }]
+          }]
+        })
+      });
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 200, success: true, data: {} }) });
+    }
+  });
   await page.locator('#hero-extract-token').click();
   await expect(page.locator('#input-token')).toHaveValue(TEST_JWT);
   await expect(page.locator('#token-bridge-status')).toContainText('Token 已提取并填入当前页面');

@@ -4029,13 +4029,7 @@
                     <div class="hero-field hero-field-full">
                         <label for="select-route_info" class="form-label">运动场地</label>
                         <select id="select-route_info" class="form-select">
-                            <option value="403640128840458727">小营田径场（四牌楼校区）</option>
-                            <option value="403640128840458521">四牌楼体育场（四牌楼校区）</option>
-                            <option value="403640124545491749">橘园田径场（九龙湖校区）</option>
-                            <option value="403640124545491473">桃园田径场（九龙湖校区）</option>
-                            <option value="403640115955556355">梅园田径场（九龙湖校区）</option>
-                            <option value="403640128840458306">丁家桥体育场（丁家桥校区）</option>
-                            <option value="405863869632939014">无锡国际校区体育馆（无锡国际校区）</option>
+                            <option value="" selected>填入 Token 后自动加载场地</option>
                         </select>
                     </div>
 
@@ -4065,6 +4059,10 @@
 
                     <div class="hero-panel-tools">
                         <button type="button" id="btn-generate-all" class="btn btn-outline-primary btn-sm">一键生成时间+轨迹</button>
+                    </div>
+                    <div id="track-preview-wrap" class="mb-3" style="display: none;">
+                        <svg id="track-preview" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" role="img" aria-label="生成的跑步轨迹" style="width:100%;height:auto;max-height:300px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;"></svg>
+                        <small id="track-preview-meta" class="text-muted d-block mt-1"></small>
                     </div>
                     <span id="time-range-message" class="text-danger" style="display: none;">❌ 所选时间超出跑操时间范围</span>
                     <small id="time-source-note" class="security-note">优先使用上海网络时间；不可用时回退到本机时间。</small>
@@ -4694,17 +4692,8 @@
             }
         };
 
-        ml_choose_route_data = {
-            "max_time": 12,
-            "min_time": 4,
-            "plan_id": "403640128840458727",
-            "route_distance_km": 1.2,
-            "route_name": "小营田径场",
-            "route_rule": "四牌楼校区",
-            "rule_end_time": "22:00",
-            "rule_id": "403640128840458519",
-            "rule_start_time": "06:00"
-        };
+        // 场地数据由服务端 listRule 下发，填入 Token 前保持为空，避免展示上一代部署的旧场地
+        ml_choose_route_data = null;
 
         ml_student_route_all_info = {
             "403640128840458727": {
@@ -7205,7 +7194,7 @@
             }
         };
 
-        ml_student_choose_route_data = ml_student_route_all_info['403640128840458727'];
+        ml_student_choose_route_data = null;
     </script>
 
     <!-- ===================== 随机轨迹生成器 ===================== -->
@@ -7467,9 +7456,11 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             // 距离下限就是目标距离本身：numLaps 已向上取整，正常会 >= 目标；
             // 只有当 numLaps 被 6 圈上限截断（极小场地）时才可能不足，此时重复一圈补足。
             // 之前写死 1400，会在一圈 410m、跑 3 圈 1230m 已达标时强行翻倍成 2460m。
+            // 现在加 5% 容差：收缩后 newDist 因浮点误差会略小于目标(如 1799.9 < 1800)，
+            // 若不加容差，会被误判成"距离不足"而触发翻倍，把距离虚增到 3.6km。
             var minSafeDistanceM = targetDistanceM;
             var distanceRetry = 0;
-            while (newDist < minSafeDistanceM && distanceRetry < 3) {
+            while (newDist < minSafeDistanceM * 0.95 && distanceRetry < 3) {
                 var originalLength = track.length;
                 for (var i = 0; i < originalLength; i++) {
                     track.push({
@@ -7627,8 +7618,67 @@ function ml_distanceToPolygon(lat, lng, polygon) {
           5. 在规则的起止时间内挑一个放得下的开始时间
         */
         // ml_date_str 可选：批量模式传入当天的日期，单次模式留空则用日期选择器的值
+        // 把生成的轨迹画到页面 SVG 上，按经纬度投影成米坐标，保持真实形状比例
+        function ml_renderTrackPreview(track, metadata) {
+            var wrap = document.getElementById("track-preview-wrap");
+            var svg = document.getElementById("track-preview");
+            if (!wrap || !svg) { return; }
+            if (!track || track.length < 2) {
+                wrap.style.display = "none";
+                return;
+            }
+            var minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+            for (var i = 0; i < track.length; i++) {
+                var p = track[i];
+                if (p.lat < minLat) minLat = p.lat;
+                if (p.lat > maxLat) maxLat = p.lat;
+                if (p.lng < minLng) minLng = p.lng;
+                if (p.lng > maxLng) maxLng = p.lng;
+            }
+            var latMeters = 111320;
+            var lngMeters = 111320 * Math.cos((minLat + maxLat) / 2 * Math.PI / 180);
+            var widthM = (maxLng - minLng) * lngMeters;
+            var heightM = (maxLat - minLat) * latMeters;
+            var pad = Math.max(widthM, heightM) * 0.06;
+            var vbW = widthM + 2 * pad;
+            var vbH = heightM + 2 * pad;
+            svg.setAttribute("viewBox", "0 0 " + vbW.toFixed(0) + " " + vbH.toFixed(0));
+
+            function px(p) {
+                return { x: (p.lng - minLng) * lngMeters + pad, y: (maxLat - p.lat) * latMeters + pad };
+            }
+            var pts = [];
+            for (var j = 0; j < track.length; j++) {
+                var c = px(track[j]);
+                pts.push(c.x.toFixed(1) + "," + c.y.toFixed(1));
+            }
+            var start = px(track[0]);
+            var end = px(track[track.length - 1]);
+            var sw = Math.max(1.2, vbW / 160);
+            svg.innerHTML =
+                '<polyline points="' + pts.join(" ") + '" fill="none" stroke="#0f766e" stroke-width="' + sw + '" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"></polyline>' +
+                '<circle cx="' + start.x.toFixed(1) + '" cy="' + start.y.toFixed(1) + '" r="' + (vbW / 60) + '" fill="#0f766e"></circle>' +
+                '<circle cx="' + end.x.toFixed(1) + '" cy="' + end.y.toFixed(1) + '" r="' + (vbW / 60) + '" fill="#f59e0b"></circle>';
+            wrap.style.display = "block";
+
+            var metaEl = document.getElementById("track-preview-meta");
+            if (metaEl && metadata) {
+                var km = (metadata.totalDistance / 1000).toFixed(2);
+                metaEl.textContent = "轨迹 " + track.length + " 点 · " + km + " km · " + (metadata.formattedTime || "");
+            }
+        }
+
+        function ml_clearTrackPreview() {
+            var wrap = document.getElementById("track-preview-wrap");
+            if (wrap) { wrap.style.display = "none"; }
+        }
+
         async function ml_generate_time_and_track(ml_date_str) {
             var route = ml_choose_route_data || {};
+            var planId = route.plan_id;
+            if (!planId) {
+                throw new Error("请先填入 Token 加载场地，再生成时间与轨迹");
+            }
             var minTimeMin = Number(route.min_time) || 4;
             var maxTimeMin = Number(route.max_time) || 12;
             var minPaceMinPerKm = Number(route.min_pace) || 3.3333;
@@ -7639,27 +7689,27 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 maxPaceMinPerKm = 10;
             }
 
-            // 1) 规则配速区间内取一个配速（分钟/公里）
-            var paceMinPerKm = minPaceMinPerKm + Math.random() * (maxPaceMinPerKm - minPaceMinPerKm);
+            // 1) 先定目标距离（贴近标准里程，1.2~1.8 带自然零头）
+            var targetDistanceKm = standardKm + Math.random() * (standardKm * 0.5);
 
-            // 2) 反推允许的距离区间
-            var minDistanceKm = Math.max(standardKm, minTimeMin / paceMinPerKm);
-            var maxDistanceKm = Math.min(maxTimeMin / paceMinPerKm, standardKm * 1.5);
-            if (!(maxDistanceKm > minDistanceKm)) { maxDistanceKm = minDistanceKm; }
-            var targetDistanceKm = minDistanceKm + Math.random() * (maxDistanceKm - minDistanceKm);
-
-            // 3) 生成轨迹
-            var planId = route.plan_id;
+            // 2) 生成轨迹，得到 ceil 到整圈后的实际距离
             var result = await ml_getRandomTrackForVenue(planId, {
-                targetDistanceM: targetDistanceKm * 1000,
-                paceSecondsPerKm: paceMinPerKm * 60
+                targetDistanceM: targetDistanceKm * 1000
             });
             if (!result || !result.track || !result.metadata) {
                 throw new Error("轨迹生成失败");
             }
             var actualDistanceKm = result.metadata.totalDistance / 1000;
 
-            // 4) 用轨迹实际长度重算时长，并夹进规则区间
+            // 3) 由实际距离反推配速范围，保证时长严格落在 [minTime, maxTime] 内。
+            //    之前先随机配速再随机距离，慢配速 + 整圈距离会让时长超过 maxTime，
+            //    被夹成整 12:00（或撞出整 8:00 这类值），看起来不自然。
+            var paceLower = Math.max(minPaceMinPerKm, minTimeMin / actualDistanceKm);
+            var paceUpper = Math.min(maxPaceMinPerKm, maxTimeMin / actualDistanceKm);
+            if (paceUpper < paceLower) { paceUpper = paceLower; }
+            var paceMinPerKm = paceLower + Math.random() * (paceUpper - paceLower);
+
+            // 4) 时长 = 配速 × 实际距离（连续随机值，带零头秒数）
             var durationSeconds = Math.round(paceMinPerKm * actualDistanceKm * 60);
             durationSeconds = Math.max(minTimeMin * 60, Math.min(maxTimeMin * 60, durationSeconds));
             durationSeconds = Math.max(durationSeconds, 60);
@@ -7683,11 +7733,15 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             ml_exercise_start_time = generatedTime.start;
             ml_exercise_end_time = generatedTime.end;
 
-            // 6) 让轨迹 metadata 与最终提交的时长一致
+            // 6) 让轨迹 metadata 与最终提交的时长、配速一致
             result.metadata.totalTime = durationSeconds;
             result.metadata.formattedTime = Math.floor(durationSeconds / 60) + " 分 " + (durationSeconds % 60) + " 秒";
+            result.metadata.paceSecondsPerKm = Math.round(paceMinPerKm * 60);
+            result.metadata.formattedPace = Math.floor(paceMinPerKm) + "'" +
+                Math.round((paceMinPerKm - Math.floor(paceMinPerKm)) * 60).toString().padStart(2, '0') + "''";
             ml_student_choose_route_data = result;
             if (typeof ml_check_valid_time_sync === "function") { ml_check_valid_time_sync(); }
+            ml_renderTrackPreview(result.track, result.metadata);
 
             console.log("时间+轨迹已生成: " + actualDistanceKm.toFixed(2) + "km / " +
                 durationSeconds + "s / " + paceMinPerKm.toFixed(2) + "min每km");
@@ -7849,6 +7903,13 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             }
 
             // ===== 规则时间范围校验 =====
+            // 场地规则还没加载（未填 Token）时无法校验时段，放行，只保留上面的基础校验
+            if (!ml_choose_route_data) {
+                ml_exercise_start_time = startTimeInput;
+                ml_exercise_end_time = endTimeInput;
+                timeRangeMessage.style.display = "none";
+                return true;
+            }
             var ruleStartTimeParts = ml_choose_route_data.rule_start_time.split(":");
             var ruleEndTimeParts = ml_choose_route_data.rule_end_time.split(":");
             var ruleStartTime = new Date(startTime);
@@ -7905,6 +7966,14 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 timeRangeMessage.textContent = "❌ 请选择有效的开始和结束时间";
                 timeRangeMessage.style.display = "block";
                 return false;
+            }
+
+            // 场地规则尚未加载时无法校验时段，放行
+            if (!ml_choose_route_data) {
+                ml_exercise_start_time = startTimeInput;
+                ml_exercise_end_time = endTimeInput;
+                timeRangeMessage.style.display = "none";
+                return true;
             }
 
             var ruleStartTimeParts = ml_choose_route_data.rule_start_time.split(":");
@@ -10107,6 +10176,7 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                     // console.log("选择的路线的详细信息:\n", {ml_choose_route_data});
                     ml_choose_route_data = ml_all_route_info[selectedPlanId];
                     ml_student_choose_route_data = ml_student_route_all_info[selectedPlanId];
+                    ml_clearTrackPreview();  // 换了场地，旧轨迹预览作废
                     console.log("选择的路线的详细信息:\n", ml_choose_route_data, "\n", ml_student_choose_route_data);
 
                 });
