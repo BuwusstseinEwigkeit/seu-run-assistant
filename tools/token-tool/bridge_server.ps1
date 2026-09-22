@@ -239,6 +239,9 @@ function Find-BladeAuthToken {
                     Nbf = if ($claims -and $claims.nbf) { [long]$claims.nbf } else { 0 }
                 }
             }
+            # 命中即结束本轮：16 个微信进程全扫一遍要 12 秒左右，而同一枚 Token
+            # 会同时存在于多个渲染进程，扫完再排exp并没有额外收益。
+            if ($candidates.Count -gt 0) { break }
         }
         if ($candidates.Count -gt 0) {
             # Prefer the most recently issued/longest-lived candidate. Length
