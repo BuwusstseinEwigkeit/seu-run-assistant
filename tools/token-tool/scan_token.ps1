@@ -76,6 +76,15 @@ public class MemScan
     /// 返回 null = 打不开进程；否则返回 "token上文"
     public static List<string> Scan(int pid, string prefix)
     {
+        return Scan(pid, prefix, false);
+    }
+
+    // privateOnly = true scans only private writable regions. A JWT is a heap
+    // string and can only live in private writable memory; mapped image
+    // sections and read-only data make up most of a Chromium renderer's
+    // address space, so skipping them cuts the bytes that must be read.
+    public static List<string> Scan(int pid, string prefix, bool privateOnly)
+    {
         IntPtr h = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
         if (h == IntPtr.Zero) return null;
 
@@ -102,6 +111,13 @@ public class MemScan
                              && (mbi.Protect & PAGE_NOACCESS) == 0
                              && ((mbi.Protect & 0x02) != 0 || (mbi.Protect & 0x04) != 0
                               || (mbi.Protect & 0x20) != 0 || (mbi.Protect & 0x40) != 0);
+
+                if (privateOnly)
+                {
+                    bool writable = (mbi.Protect & 0x04) != 0 || (mbi.Protect & 0x08) != 0
+                                 || (mbi.Protect & 0x40) != 0 || (mbi.Protect & 0x80) != 0;
+                    readable = readable && writable && mbi.Type == 0x20000u; // MEM_PRIVATE
+                }
 
                 if (readable)
                 {

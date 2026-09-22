@@ -217,8 +217,16 @@ function Find-BladeAuthToken {
         $targets = @(Get-Process -Name $names -ErrorAction SilentlyContinue)
         if ($targets.Count -gt 0) { $foundProcess = $true }
         $candidates = @()
+        # Two-tier filtering across processes: scan only private writable heap
+        # first (a JWT can only live there), then fall back to the whole readable
+        # address space only if nothing was found. Doing this per process is
+        # slower, because every process without the token gets scanned twice.
+        # NOTE: keep this file ASCII-only. It has no BOM, so PowerShell 5.1 reads
+        # it as ANSI; a multi-byte character before a newline can swallow the
+        # newline and merge the next line into the comment.
+        foreach ($privateOnly in @($true, $false)) {
         foreach ($process in $targets) {
-            $results = [MemScan]::Scan($process.Id, 'eyJ')
+            $results = [MemScan]::Scan($process.Id, 'eyJ', $privateOnly)
             if ($null -eq $results) { continue }
             foreach ($entry in $results) {
                 $parts = $entry.Split([char]1)
@@ -241,9 +249,10 @@ function Find-BladeAuthToken {
                     Nbf = if ($claims -and $claims.nbf) { [long]$claims.nbf } else { 0 }
                 }
             }
-            # 命中即结束本轮：16 个微信进程全扫一遍要 12 秒左右，而同一枚 Token
-            # 会同时存在于多个渲染进程，扫完再排exp并没有额外收益。
             if ($candidates.Count -gt 0) { break }
+        }
+        # tier 1 hit: skip the full-address-space fallback
+        if ($candidates.Count -gt 0) { break }
         }
         $roundMs = [int]((Get-Date) - $roundStart).TotalMilliseconds
         Write-Host ("  round {0}: scanned {1} processes in {2} ms, candidates {3}" -f $round, $targets.Count, $roundMs, $candidates.Count)
