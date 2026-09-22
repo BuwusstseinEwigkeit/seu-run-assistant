@@ -211,7 +211,9 @@ function Find-BladeAuthToken {
     $seen = New-Object 'System.Collections.Generic.HashSet[string]'
     $foundProcess = $false
 
+    $scanStart = Get-Date
     for ($round = 1; $round -le $Loop; $round++) {
+        $roundStart = Get-Date
         $targets = @(Get-Process -Name $names -ErrorAction SilentlyContinue)
         if ($targets.Count -gt 0) { $foundProcess = $true }
         $candidates = @()
@@ -243,6 +245,8 @@ function Find-BladeAuthToken {
             # 会同时存在于多个渲染进程，扫完再排exp并没有额外收益。
             if ($candidates.Count -gt 0) { break }
         }
+        $roundMs = [int]((Get-Date) - $roundStart).TotalMilliseconds
+        Write-Host ("  round {0}: scanned {1} processes in {2} ms, candidates {3}" -f $round, $targets.Count, $roundMs, $candidates.Count)
         if ($candidates.Count -gt 0) {
             # Prefer the most recently issued/longest-lived candidate. Length
             # is a deterministic tie-breaker and also avoids accidentally
@@ -252,13 +256,21 @@ function Find-BladeAuthToken {
                             @{Expression={ $_.Nbf }; Descending=$true},
                             @{Expression={ $_.Token.Length }; Descending=$false} |
                 Select-Object -First 1
-            return @{ Token = $selected.Token; Process = $selected.Process; Pid = $selected.Pid; Round = $selected.Round }
+            return @{
+                Token = $selected.Token
+                Process = $selected.Process
+                Pid = $selected.Pid
+                Round = $selected.Round
+                ElapsedMs = [int]((Get-Date) - $scanStart).TotalMilliseconds
+            }
         }
         if ($round -lt $Loop) { Start-Sleep -Seconds $Interval }
     }
 
-    if (-not $foundProcess) { return @{ Error = 'WeChat process not found. Open WeChat first.'; Code = 409 } }
-    return @{ Error = 'Blade-Auth token not found. Open the SEU sports mini-program and trigger a data request, then retry.'; Code = 404 }
+    $elapsedMs = [int]((Get-Date) - $scanStart).TotalMilliseconds
+    Write-Host ("  scan finished: {0} rounds in {1} ms, no token found" -f $Loop, $elapsedMs)
+    if (-not $foundProcess) { return @{ Error = 'WeChat process not found. Open WeChat first.'; Code = 409; ElapsedMs = $elapsedMs } }
+    return @{ Error = 'Blade-Auth token not found. Open the SEU sports mini-program and trigger a data request, then retry.'; Code = 404; ElapsedMs = $elapsedMs }
 }
 
 $script:UpstreamOrigin = 'https://tyxsjpt.seu.edu.cn'
@@ -371,10 +383,10 @@ try {
             if ($match.Token) {
                 Set-Clipboard -Value $match.Token
                 [void](Focus-Edge)
-                Write-Host "Token found in $($match.Process) on round $($match.Round); copied to clipboard."
-                Send-JsonResponse $client 200 @{ ok = $true; token = $match.Token; copied = $true }
+                Write-Host ("Token found in {0} (pid {1}) on round {2}; elapsed {3} ms; copied to clipboard." -f $match.Process, $match.Pid, $match.Round, $match.ElapsedMs)
+                Send-JsonResponse $client 200 @{ ok = $true; token = $match.Token; copied = $true; elapsedMs = $match.ElapsedMs }
             } else {
-                Send-JsonResponse $client ([int]$match.Code) @{ ok = $false; error = $match.Error }
+                Send-JsonResponse $client ([int]$match.Code) @{ ok = $false; error = $match.Error; elapsedMs = $match.ElapsedMs }
             }
         } catch {
             try { Send-JsonResponse $client 500 @{ ok = $false; error = 'Bridge error' } } catch {}

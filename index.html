@@ -9738,6 +9738,8 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                     bridgeStatus.textContent = '正在等待“东南大学体育管理 → 阳光跑”发起请求，最多等待约 45 秒…';
                     var controller = new AbortController();
                     var timeoutId = window.setTimeout(function() { controller.abort(); }, 65000);
+                    // 计时：桥接控制台会打印每轮耗时，这里记录端到端耗时
+                    var scanStartedAt = performance.now();
                     try {
                         var response = await fetch(bridgeBaseUrl + '/scan', {
                             method: 'GET',
@@ -9746,6 +9748,13 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                             signal: controller.signal
                         });
                         var payload = await response.json();
+                        var scanElapsedMs = Math.round(performance.now() - scanStartedAt);
+                        console.log('Token 提取耗时: ' + scanElapsedMs + ' ms (桥接侧 ' +
+                            (payload && payload.elapsedMs !== undefined ? payload.elapsedMs + ' ms' : '未上报') + ')');
+                        if (bridgeStatus && bridgeStatus.textContent) {
+                            bridgeStatus.textContent = bridgeStatus.textContent.replace(/\s*\[耗时.*?\]$/, '') +
+                                ' [耗时 ' + (scanElapsedMs / 1000).toFixed(1) + ' 秒]';
+                        }
                         if (!response.ok || !payload.ok || !payload.token) {
                             throw new Error(payload.error || '本地桥接服务没有返回 Token。');
                         }
