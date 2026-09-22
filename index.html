@@ -7364,36 +7364,51 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             }
             if (!polygon || polygon.length < 3) throw new Error("场地边界无效");
 
-            // ---- 核心策略: 基于场地边界多边形生成轨迹 ----
-            // 将多边形向内缩放(到质心的90%)作为跑步轨迹路径
-            // 这保证所有点100%在边界内，且距离可控
-            var polyCenter = ml_polygonCentroid(polygon);
-            var innerScale = 0.88 + Math.random() * 0.07; // 0.88-0.95随机
-            var innerPoly = [];
-            for (var i = 0; i < polygon.length; i++) {
-                innerPoly.push({
-                    lat: polyCenter.lat + (polygon[i].lat - polyCenter.lat) * innerScale,
-                    lng: polyCenter.lng + (polygon[i].lng - polyCenter.lng) * innerScale
-                });
+            // ---- 核心策略: 在场地边界内生成平滑椭圆跑道轨迹 ----
+            // 服务端的 latlngs 只有 4-6 个粗角点，直接连线是一条折线，不像跑步轨迹。
+            // 田径场是椭圆跑道，这里用椭圆参数方程生成平滑轨迹，再沿椭圆跑圈凑够目标距离。
+            var bounds = ml_polygonBounds(polygon);
+            var polyCenter = {
+                lat: (bounds.minLat + bounds.maxLat) / 2,
+                lng: (bounds.minLng + bounds.maxLng) / 2
+            };
+            var latMeters = 111320;
+            var lngMeters = 111320 * Math.cos(polyCenter.lat * Math.PI / 180);
+            var widthM = (bounds.maxLng - bounds.minLng) * lngMeters;   // 东西跨度(米)
+            var heightM = (bounds.maxLat - bounds.minLat) * latMeters;  // 南北跨度(米)
+
+            // 椭圆半轴(米)：长轴沿场地较长方向，短轴按田径场比例，留出边距
+            var majorAxisM = Math.max(widthM, heightM) / 2 * 0.80;
+            var minorAxisM = Math.min(widthM, heightM) / 2 * 0.80;
+            // 田径场椭圆长宽比约 1.5:1，太方时拉长，但不能超出边界框
+            var maxMajorM = Math.max(widthM, heightM) / 2 * 0.90;
+            if (majorAxisM < minorAxisM * 1.5) {
+                majorAxisM = Math.min(minorAxisM * 1.5, maxMajorM);
             }
+            var majorAlongLng = widthM >= heightM;   // 东西更长时，长轴沿经度方向
 
-            // 计算内多边形周长
-            var innerPerimeter = 0;
-            for (var i = 0; i < innerPoly.length; i++) {
-                var j = (i + 1) % innerPoly.length;
-                innerPerimeter += ml_haversineDistance(innerPoly[i].lat, innerPoly[i].lng, innerPoly[j].lat, innerPoly[j].lng);
-            }
+            // 椭圆周长（拉马努金近似）
+            var ellipsePerim = Math.PI * (3 * (majorAxisM + minorAxisM) -
+                Math.sqrt((3 * majorAxisM + minorAxisM) * (majorAxisM + 3 * minorAxisM)));
 
-            // 需要的圈数
-            var numLaps = Math.max(1, Math.ceil(targetDistanceM / innerPerimeter));
-            numLaps = Math.min(numLaps, 4); // 最多4圈
+            // 每圈采样点数(间距约 6m)；圈数 = 目标距离 / 每圈周长
+            var ptsPerLap = Math.max(40, Math.round(ellipsePerim / 6));
+            var numLaps = Math.max(1, Math.ceil(targetDistanceM / ellipsePerim));
+            numLaps = Math.min(numLaps, 6); // 最多 6 圈
 
-            // 生成轨迹: 沿内多边形跑numLaps圈，每圈加随机扰动
+            // 生成轨迹：绕椭圆跑 numLaps 圈，每圈加 GPS 漂移 + 相位抖动
             var track = [];
             for (var lap = 0; lap < numLaps; lap++) {
-                for (var i = 0; i < innerPoly.length; i++) {
-                    var lat = innerPoly[i].lat + (Math.random() - 0.5) * noiseLevel * 2;
-                    var lng = innerPoly[i].lng + (Math.random() - 0.5) * noiseLevel * 2;
+                var phaseJitter = (Math.random() - 0.5) * 0.08;
+                for (var p = 0; p < ptsPerLap; p++) {
+                    var theta = (p / ptsPerLap) * 2 * Math.PI + phaseJitter;
+                    var xM = majorAxisM * Math.cos(theta);   // 沿长轴
+                    var yM = minorAxisM * Math.sin(theta);   // 沿短轴
+                    var dLat, dLng;
+                    if (majorAlongLng) { dLng = xM / lngMeters; dLat = yM / latMeters; }
+                    else { dLat = xM / latMeters; dLng = yM / lngMeters; }
+                    var lat = polyCenter.lat + dLat + (Math.random() - 0.5) * noiseLevel * 2;
+                    var lng = polyCenter.lng + dLng + (Math.random() - 0.5) * noiseLevel * 2;
                     // 边界验证
                     if (!ml_isPointInPolygon(lat, lng, polygon)) {
                         var clamped = ml_movePointInsidePolygon(lat, lng, polygon, polyCenter);
@@ -7449,7 +7464,10 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             }
             newDist += ml_haversineDistance(resampled[resampled.length-1].lat, resampled[resampled.length-1].lng, resampled[0].lat, resampled[0].lng);
 
-            var minSafeDistanceM = 1400;
+            // 距离下限就是目标距离本身：numLaps 已向上取整，正常会 >= 目标；
+            // 只有当 numLaps 被 6 圈上限截断（极小场地）时才可能不足，此时重复一圈补足。
+            // 之前写死 1400，会在一圈 410m、跑 3 圈 1230m 已达标时强行翻倍成 2460m。
+            var minSafeDistanceM = targetDistanceM;
             var distanceRetry = 0;
             while (newDist < minSafeDistanceM && distanceRetry < 3) {
                 var originalLength = track.length;
