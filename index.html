@@ -8289,7 +8289,18 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 body: JSON.stringify({ recordTime: ml_month_str })
             });
             var ml_json = await ml_parse_response(ml_response, "读取历史记录");
-            return (ml_json && ml_json.data && ml_json.data.recordList) || [];
+            var ml_all_records = (ml_json && ml_json.data && ml_json.data.recordList) || [];
+            return ml_all_records.filter(ml_is_current_rule_record);
+        }
+
+        /*
+        ML Remark: 小程序只显示属于当前锻炼任务的记录。
+        实测接口返回 8 条，其中 2 条 ruleId = -1（routeRule 显示为"打卡锻炼"）不显示，
+        8 - 2 = 6，正好等于小程序里数到的条数；9/23 那条 ruleId=-1 的也不显示。
+        查重同样按这个过滤，否则会把不属于本任务的记录当成"当天已有记录"。
+        */
+        function ml_is_current_rule_record(ml_record) {
+            return Number(ml_record.ruleId) !== -1;
         }
 
         // 返回该日期上已有的记录；没有则返回 null。查询失败时抛错，由调用方决定是否放行。

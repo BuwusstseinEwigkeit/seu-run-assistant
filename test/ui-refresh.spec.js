@@ -335,7 +335,9 @@ test('按天查重：当天已有记录能被识别出来', async ({ page }) => 
           success: true,
           data: {
             recordList: [
-              { recordId: '1', recordTime: '2026-09-23', routeName: '桃园田径场', exerciseStatus: 1, isUse: 0 }
+              { recordId: '1', recordTime: '2026-09-23', routeName: '桃园田径场', exerciseStatus: 1, isUse: 0, ruleId: '2101919551519227905' },
+              // ruleId = -1 属于"打卡锻炼"，不应参与查重
+              { recordId: '9', recordTime: '2026-09-24', routeName: '桃园田径场', exerciseStatus: 1, isUse: 0, ruleId: -1 }
             ]
           }
         }
@@ -378,8 +380,10 @@ test('历史记录面板展开后渲染记录', async ({ page }) => {
         success: true,
         data: {
           recordList: [
-            { recordId: '1', recordTime: '2026-09-23', routeName: '桃园田径场', routeRule: '2026~2027学年1学期锻炼任务', strExerciseTimes: '00:09:06', routeKilometre: '1.330', exerciseStatus: 0, isUse: 1 },
-            { recordId: '2', recordTime: '2026-09-22', routeName: '橘园田径场', routeRule: '2026~2027学年1学期锻炼任务', strExerciseTimes: '00:07:00', routeKilometre: '1.200', exerciseStatus: 1, isUse: 0 }
+            { recordId: '1', recordTime: '2026-09-23', routeName: '桃园田径场', routeRule: '2026~2027学年1学期锻炼任务', strExerciseTimes: '00:09:06', routeKilometre: '1.330', exerciseStatus: 0, isUse: 1, ruleId: '2101919551519227905' },
+            { recordId: '2', recordTime: '2026-09-22', routeName: '橘园田径场', routeRule: '2026~2027学年1学期锻炼任务', strExerciseTimes: '00:07:00', routeKilometre: '1.200', exerciseStatus: 1, isUse: 0, ruleId: '2101919551519227905' },
+            // ruleId = -1 不属于当前锻炼任务，小程序不展示，这里也必须被过滤掉
+            { recordId: '3', recordTime: '2026-09-21', routeName: '桃园田径场', routeRule: '打卡锻炼', exerciseStatus: 1, isUse: 0, ruleId: -1 }
           ]
         }
       })
