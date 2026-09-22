@@ -4283,8 +4283,8 @@
                                 <div class="guide-hero-copy">
                                     <div class="guide-eyebrow">第一次使用，从这里开始</div>
                                     <div class="guide-title">打开小程序、提取 Token，再开始记录</div>
-                                    <p class="guide-subtitle">先启动本地桥接服务，再打开微信小程序“阳光跑”，最后点击本页按钮，Blade-Auth Token 会自动填入当前页面。</p>
-                                    <p class="guide-note">网页不会自动运行 .bat：请先双击 <code>tools/token-tool/get-token.bat</code> 并保持黑色窗口运行。</p>
+                                    <p class="guide-subtitle">启动本地桥接服务，打开微信小程序「阳光跑」，再点本页的提取按钮，Token 会填入输入框。</p>
+                                    <p class="guide-note">浏览器无法自行运行 .bat，需要先双击 <code>tools/token-tool/get-token.bat</code> 并保持该窗口开启。</p>
                                 </div>
                             </div>
 
@@ -4350,29 +4350,29 @@
                                     <li>
                                         <div>
                                             <strong>启动本地桥接服务</strong>
-                                            <p class="guide-note">先双击 <code class="guide-code">tools/token-tool/get-token.bat</code>。黑色窗口必须保持打开；网页无法代替浏览器安全地自动运行 .bat。</p>
+                                            <p class="guide-note">双击 <code class="guide-code">tools/token-tool/get-token.bat</code>，并保持弹出的窗口开启。</p>
                                         </div>
                                     </li>
                                     <li>
                                         <div>
                                             <strong>打开微信小程序</strong>
-                                            <p class="guide-note">进入“东南大学体育管理 → 阳光跑”，打开会加载数据的页面，让小程序发起请求。</p>
+                                            <p class="guide-note">进入「东南大学体育管理 → 阳光跑」，打开任意会加载数据的页面。</p>
                                         </div>
                                     </li>
                                     <li>
                                         <div>
                                             <strong>点击网页提取 Token</strong>
-                                            <p class="guide-note">点击首屏“从微信小程序提取 Token”，桥接服务会把微信进程中的 Blade-Auth Token 回填到输入框。</p>
+                                            <p class="guide-note">点首屏的「从微信小程序提取 Token」，Token 会填入输入框。</p>
                                         </div>
                                     </li>
                                     <li>
                                         <div>
                                             <strong>确认 Token 已填入</strong>
-                                            <p class="guide-note">输入框会自动填入 Token，桥接服务同时复制一份到剪贴板作为备用。填入后页面会立刻校验，并从服务端拉取当前场地与规则。</p>
+                                            <p class="guide-note">填入后页面会立即校验，并从服务端读取当前场地与规则。Token 同时复制到剪贴板备用。</p>
                                         </div>
                                     </li>
                                 </ol>
-                                <p class="guide-note">桥接窗口在整个使用过程中都要保持运行：提取 Token 靠它读微信进程内存，提交记录也要经它转发——服务端的跨域白名单不允许浏览器直接调用小程序接口。</p>
+                                <p class="guide-note">桥接窗口全程保持开启：提取 Token 依靠它读取微信进程内存，提交记录也由它转发——服务端不允许浏览器直接调用小程序接口。</p>
                             </section>
 
                             <section class="guide-section">
@@ -4381,22 +4381,22 @@
                                     <div class="guide-step">
                                         <span>01</span>
                                         <strong>填 Token 并选场地</strong>
-                                        <p>粘贴 Blade-Auth Token，选择运动场地。Token 校验通过后，场地与规则会从服务端实时刷新。</p>
+                                        <p>粘贴 Blade-Auth Token 并选择场地。校验通过后，场地与规则会从服务端刷新。</p>
                                     </div>
                                     <div class="guide-step">
                                         <span>02</span>
                                         <strong>一键生成时间与轨迹</strong>
-                                        <p>点“一键生成时间+轨迹”：先按规则配速反推距离生成轨迹，再用轨迹长度算出时长，并安排在规定的锻炼时间内。三者始终自洽，也可手动改。</p>
+                                        <p>点「一键生成时间+轨迹」：按规则配速生成轨迹，再由轨迹长度得出时长，并安排在允许的时段内。也可手动设置。</p>
                                     </div>
                                     <div class="guide-step">
                                         <span>03</span>
                                         <strong>准备照片并预检</strong>
-                                        <p>上传开始和结束照片后执行本地预检：Token 形态、时间范围、照片、当天是否已有记录，以及可选的课表冲突。</p>
+                                        <p>上传开始和结束照片，然后执行本地预检：Token 形态、时间范围、照片、当天是否已有记录，以及可选的课表冲突。</p>
                                     </div>
                                     <div class="guide-step">
                                         <span>04</span>
                                         <strong>阅读结果再判断</strong>
-                                        <p>提交期间页面会显示检查、上传和等待状态；以明确成功提示为准。</p>
+                                        <p>提交期间页面会显示检查和上传状态，以成功提示为准。</p>
                                     </div>
                                 </div>
                             </section>
@@ -4405,7 +4405,7 @@
                                 <div>
                                     <span class="section-eyebrow">OPTIONAL CHECKS</span>
                                     <div class="guide-section-title">进阶功能保持可选</div>
-                                    <p class="guide-note">课表导入、照片时间阻止与批量失败重试都不会挡住最短主流程。只有你主动启用对应检查时，它们才参与提交判断。右侧「我的锻炼记录」面板只读展示服务端记录，与提交判定无关。</p>
+                                    <p class="guide-note">课表导入、照片时间阻止与批量失败重试都不影响最短主流程：只有主动启用时，它们才参与提交判断。右侧「我的锻炼记录」面板只读展示服务端记录，与提交判定无关。</p>
                                 </div>
                                 <button type="button" class="btn btn-outline-primary" data-open-mode="run">返回填写区 <span aria-hidden="true">→</span></button>
                             </section>
