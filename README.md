@@ -3,8 +3,8 @@
 东南大学课外锻炼记录助手。在网页上填写跑步记录，自动生成符合规则的轨迹、时间、配速，一键提交。
 可以补录之前的记录，也可以提前跑。
 
-> 基于 [harkerhand/ML-SEU-Exercise-Helper](https://github.com/harkerhand/ML-SEU-Exercise-Helper) 改进，
-> 原版作者 [Midairlogn](https://github.com/midairlogn)。遵循 [GPLv3 许可证](LICENSE)。
+> 原作者 Midairlogn，现维护仓库 [harkerhand/ML-SEU-Exercise-Helper](https://github.com/harkerhand/ML-SEU-Exercise-Helper)。
+> 本版在其基础上改进，遵循 [GPLv3 许可证](LICENSE)。
 
 ---
 
@@ -110,7 +110,7 @@ Token 和提交记录都要经过它。
 
 ## 声明
 
-- 本项目基于 [harkerhand/ML-SEU-Exercise-Helper](https://github.com/harkerhand/ML-SEU-Exercise-Helper) 开发，原版作者 [Midairlogn](https://github.com/midairlogn)
+- 本项目基于 [harkerhand/ML-SEU-Exercise-Helper](https://github.com/harkerhand/ML-SEU-Exercise-Helper) 开发，原作者 Midairlogn
 - 遵循 [GPLv3 许可](LICENSE)：可自由使用、修改、分发，但修改后的版本必须同样在 GPLv3 下开源
 - 反对任何形式的商业化使用（收费服务、出售代码等）
 
