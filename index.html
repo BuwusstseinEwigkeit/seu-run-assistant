@@ -7683,6 +7683,7 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             if (!planId) {
                 throw new Error("请先填入 Token 加载场地，再生成时间与轨迹");
             }
+            if (typeof ml_apply_date_max_limits === "function") { ml_apply_date_max_limits(); }
             var minTimeMin = Number(route.min_time) || 4;
             var maxTimeMin = Number(route.max_time) || 12;
             var minPaceMinPerKm = Number(route.min_pace) || 3.3333;
@@ -7728,7 +7729,7 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                     : (startInput && startInput.value ? startInput.value.slice(0, 10) : ml_format_exercise_date(new Date())));
             var generatedTime = ml_generateValidTimeForDate(dateStr, durationSeconds);
             if (!generatedTime || !generatedTime.start || !generatedTime.end) {
-                throw new Error("无法在规则时间内安排这段运动");
+                throw new Error("今天已经没有可用的时段了（不能提前跑）。请把开始时间改到今天更早的时间，或者选择过去的日期。");
             }
 
             document.getElementById("exercise-start_time").value = generatedTime.start;
@@ -7880,32 +7881,22 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                 return false;
             }
 
-            // ===== 智能守卫：检测时间是否超前（批量模式下跳过） =====
-            if (!ml_batch_mode) {
-                try {
-                    var internetTime = await ml_fetchInternetTime();
-                    var timeDiffMs = startTime - internetTime;
-                    var timeDiffHours = timeDiffMs / (1000 * 60 * 60);
-                    if (timeDiffHours > 1) {
-                        // 开始时间超前互联网时间超过 1 小时，弹窗警告
-                        var userConfirmed = confirm(
-                            "⚠️ 检测到开始时间超前于当前实际时间！\n\n" +
-                            "当前互联网时间: " + internetTime.toLocaleString("zh-CN") + "\n" +
-                            "您选择的时间: " + startTimeInput + "\n\n" +
-                            "这可能是因为您的设备时间设置不正确。\n" +
-                            "点击\"确定\"将时间修正为当前时间，点击\"取消\"继续使用原时间。"
-                        );
-                        if (userConfirmed) {
-                            ml_set_initial_time_value();
-                            ml_show_Alert("时间已修正", "⚠️ 开始时间已修正为当前时间，请检查后重新提交。");
-                            return false;
-                        }
-                    }
-                } catch (e) {
-                    console.warn("时间守卫检查失败:", e);
-                }
+            // ===== 禁止提前跑：开始时间不能晚于当前时间 =====
+            // 批量模式同样要拦（原来这里 if (!ml_batch_mode) 跳过了批量）。
+            // 优先用网络时间，取不到就退回本机时间，避免因为网络问题放行。
+            var nowForGuard = null;
+            try {
+                nowForGuard = await ml_fetchInternetTime();
+            } catch (e) {
+                console.warn("时间守卫取网络时间失败，改用本机时间:", e);
+                nowForGuard = new Date();
             }
-
+            if (startTime > nowForGuard) {
+                timeRangeMessage.textContent = "❌ 不能提前跑：" + startTimeInput.slice(0, 16).replace("T", " ") +
+                    " 还没到。请选择已经发生过的时间。";
+                timeRangeMessage.style.display = "block";
+                return false;
+            }
             // ===== 规则时间范围校验 =====
             // 场地规则还没加载（未填 Token）时无法校验时段，放行，只保留上面的基础校验
             if (!ml_choose_route_data) {
@@ -7968,6 +7959,14 @@ function ml_distanceToPolygon(lat, lng, polygon) {
 
             if (!startTimeInput || !endTimeInput || isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
                 timeRangeMessage.textContent = "❌ 请选择有效的开始和结束时间";
+                timeRangeMessage.style.display = "block";
+                return false;
+            }
+
+            // 禁止提前跑：同步版拿不到网络时间，用本机时间兜底
+            if (startTime > new Date()) {
+                timeRangeMessage.textContent = "❌ 不能提前跑：" + startTimeInput.slice(0, 16).replace("T", " ") +
+                    " 还没到。请选择已经发生过的时间。";
                 timeRangeMessage.style.display = "block";
                 return false;
             }
@@ -8056,6 +8055,16 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             return year + '-' + month + '-' + day;
         }
 
+        // 禁止提前跑：把三个日期控件的 max 设为今天，从 UI 上就选不了未来的日期。
+        // 每次生成时间前会重新调用一次，页面跨天开着也不会失效。
+        function ml_apply_date_max_limits() {
+            var today = ml_format_exercise_date(new Date());
+            ['exercise-date-picker', 'batch-start-date', 'batch-end-date'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) { el.setAttribute('max', today); }
+            });
+        }
+
         function ml_sync_exercise_date_picker() {
             var startInput = document.getElementById('exercise-start_time');
             var datePicker = document.getElementById('exercise-date-picker');
@@ -8098,6 +8107,13 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             var ruleEndParts = ml_choose_route_data.rule_end_time.split(':');
             var earliestStart = new Date(year, month, day, parseInt(ruleStartParts[0], 10), parseInt(ruleStartParts[1], 10), 0);
             var latestEnd = new Date(year, month, day, parseInt(ruleEndParts[0], 10), parseInt(ruleEndParts[1], 10), 0);
+            // 禁止提前跑：结束时间不能晚于当前时间，否则生成的是一条未来的记录
+            var nowForGen = new Date();
+            if (latestEnd > nowForGen) { latestEnd = nowForGen; }
+            if (latestEnd <= earliestStart) {
+                // 今天已经没有任何可用的过去时段（比如早上 6 点前还没到锻炼时间）
+                return null;
+            }
             var latestStart = new Date(latestEnd.getTime() - durationSeconds * 1000);
             if (latestStart < earliestStart) {
                 latestStart = new Date(earliestStart);
@@ -9807,14 +9823,27 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                     }, 500);
                 };
                 tokenInputForRoutes.addEventListener('change', reloadRoutes);
-                // 提取按钮填完 Token 后再补一次，此时不会有 change 事件
+                // 提取是异步的，等 Token 真正填进输入框再刷新场地（最长等 6 秒）。
+                // 原来写死 setTimeout 1200ms，提取慢于 1.2 秒时就会刷不动。
                 var extractButton = document.getElementById('hero-extract-token');
-                if (extractButton) { extractButton.addEventListener('click', function() { setTimeout(reloadRoutes, 1200); }); }
+                if (extractButton) {
+                    extractButton.addEventListener('click', function() {
+                        var waitedMs = 0;
+                        var poll = setInterval(function() {
+                            waitedMs += 200;
+                            if (tokenInputForRoutes.value.trim()) {
+                                clearInterval(poll);
+                                reloadRoutes();
+                            } else if (waitedMs >= 6000) {
+                                clearInterval(poll);
+                            }
+                        }, 200);
+                    });
+                }
             })();
 
             // 我的锻炼记录：展开时按需加载，「刷新」和换月都会重新拉取
-            (function() {
-                var historyDetails = document.getElementById('history-details');
+            (function() {                var historyDetails = document.getElementById('history-details');
                 var historyMonth = document.getElementById('history-month-picker');
                 var historyRefresh = document.getElementById('btn-refresh-history');
                 if (historyMonth && !historyMonth.value) {
@@ -9835,6 +9864,8 @@ function ml_distanceToPolygon(lat, lng, polygon) {
                     });
                 }
             })();
+            // 禁止提前跑：限制三个日期控件不能选未来
+            ml_apply_date_max_limits();
             ml_updateHeroFlowState();
 
             var consistencyDetails = document.getElementById('consistency-details');

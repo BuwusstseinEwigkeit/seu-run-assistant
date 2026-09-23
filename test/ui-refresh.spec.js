@@ -63,6 +63,9 @@ test('首屏实际表单与大图教程在桌面和手机均可读', async ({ pa
   await page.locator('#hero-extract-token').click();
   await expect(page.locator('#input-token')).toHaveValue(TEST_JWT);
   await expect(page.locator('#token-bridge-status')).toContainText('Token 已提取并填入当前页面');
+  // 场地表由服务端下发（mock 的 planId 是 p1），等它加载完再做后续断言；
+  // 下拉框初始是空占位，场地没加载时 flow step 2 不会进入完成态
+  await expect(page.locator('#select-route_info')).toHaveValue('p1', { timeout: 8000 });
   await expect(page.locator('.date-chip[data-date-offset="0"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.date-chip[data-date-offset="0"]')).toHaveClass(/is-selected/);
   await expect(page.locator('#hero-quick-panel #input-token')).toBeVisible();
@@ -318,10 +321,17 @@ test('一键生成的时间与轨迹自洽（时长=距离×配速，且点在�
       rule_start_time: '06:00:00',
       rule_end_time: '22:30:00'
     };
-    const outcome = await window.ml_generate_time_and_track();
+    // 用昨天的日期：生成器禁止产出未来时间，用今天会依赖测试运行时刻
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const ymd = yesterday.getFullYear() + '-' +
+      String(yesterday.getMonth() + 1).padStart(2, '0') + '-' +
+      String(yesterday.getDate()).padStart(2, '0');
+    const outcome = await window.ml_generate_time_and_track(ymd);
     const start = document.getElementById('exercise-start_time').value;
     const end = document.getElementById('exercise-end_time').value;
     return {
+      ymd: ymd,
       durationSeconds: outcome.durationSeconds,
       metaTime: outcome.metadata.totalTime,
       distanceKm: outcome.metadata.totalDistance / 1000,
@@ -344,6 +354,9 @@ test('一键生成的时间与轨迹自洽（时长=距离×配速，且点在�
   expect(result.metaTime).toBe(result.durationSeconds);
   const formSeconds = (new Date(result.end) - new Date(result.start)) / 1000;
   expect(Math.abs(formSeconds - result.durationSeconds)).toBeLessThanOrEqual(1);
+  // 禁止提前跑：生成结果必须落在所选的那一天，且已经过去
+  expect(result.start.slice(0, 10)).toBe(result.ymd);
+  expect(new Date(result.end).getTime()).toBeLessThanOrEqual(Date.now());
 });
 
 test('按天查重：当天已有记录能被识别出来', async ({ page }) => {
