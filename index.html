@@ -4064,6 +4064,36 @@
                         <svg id="track-preview" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" role="img" aria-label="生成的跑步轨迹" style="width:100%;height:auto;max-height:300px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;"></svg>
                         <small id="track-preview-meta" class="text-muted d-block mt-1"></small>
                     </div>
+
+                    <!-- 实时跑操 -->
+                    <details id="live-run-details" class="mb-3 consistency-panel">
+                        <summary class="consistency-summary">
+                            <span>
+                                <strong>实时跑操</strong>
+                                <small>按真实时间跑，时间戳和服务端完全对齐</small>
+                            </span>
+                            <span class="consistency-summary-action">展开 <span aria-hidden="true">⌄</span></span>
+                        </summary>
+                        <div class="consistency-panel-body">
+                            <p class="guide-note">
+                                点「开始跑操」后页面会<strong>立刻</strong>上传开始记录（服务端记下的就是你的真实开始时间），
+                                然后你真的去跑；跑够规则要求再回来点「结束跑操」。
+                                <strong>整个跑操期间这个页面不能关闭或刷新</strong>，否则这次就断了。
+                            </p>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button type="button" id="btn-live-start" class="btn btn-primary btn-sm">开始跑操</button>
+                                <button type="button" id="btn-live-finish" class="btn btn-success btn-sm" disabled>结束跑操</button>
+                                <button type="button" id="btn-live-abort" class="btn btn-outline-secondary btn-sm" disabled>放弃本次</button>
+                            </div>
+                            <div id="live-status" class="live-status" role="status" aria-live="polite">尚未开始</div>
+                            <div class="progress mt-2" style="height: 22px; border-radius: 11px;">
+                                <div id="live-progress-bar" class="progress-bar" role="progressbar" style="width: 0%; font-size: 13px; line-height: 22px;">0%</div>
+                            </div>
+                            <ul id="live-metrics" class="consistency-list mt-3">
+                                <li class="text-muted">开始后这里显示已跑时间、距离和配速</li>
+                            </ul>
+                        </div>
+                    </details>
                     <span id="time-range-message" class="text-danger" style="display: none;">❌ 所选时间超出跑操时间范围</span>
                     <small id="time-source-note" class="security-note">优先使用上海网络时间；不可用时回退到本机时间。</small>
 
@@ -7300,6 +7330,71 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             return { minLat: minLat, maxLat: maxLat, minLng: minLng, maxLng: maxLng };
         }
 
+        /*
+        ML Remark: 把粗角点多边形圆角化成平滑跑道
+        服务端下发的 latlngs 往往只有 4-6 个角点，直接连线是折线。这里对每个角点
+        用二次贝塞尔过渡（在两条邻边上各取 r 距离的点作起止、角点作控制点），
+        得到贴合场地实际形状的平滑闭合路径。矩形场地会自然得到
+        「两个直道 + 两个半圆弧」的标准田径场形状。
+        r 会被自动收缩到相邻边长的一半以内，避免相邻圆角互相吃掉。
+        */
+        function ml_roundPolygon(polygon, radiusMeters, latMeters, lngMeters) {
+            var n = polygon.length;
+            if (n < 3) { return polygon.slice(); }
+            var toXY = function(p) { return { x: p.lng * lngMeters, y: p.lat * latMeters }; };
+            var toLL = function(m) { return { lat: m.y / latMeters, lng: m.x / lngMeters }; };
+            var steps = Math.max(5, Math.min(24, Math.round(radiusMeters / 3)));
+            var out = [];
+            for (var i = 0; i < n; i++) {
+                var A = toXY(polygon[(i - 1 + n) % n]);
+                var B = toXY(polygon[i]);
+                var C = toXY(polygon[(i + 1) % n]);
+                var BA = { x: A.x - B.x, y: A.y - B.y };
+                var BC = { x: C.x - B.x, y: C.y - B.y };
+                var lenBA = Math.sqrt(BA.x * BA.x + BA.y * BA.y) || 1;
+                var lenBC = Math.sqrt(BC.x * BC.x + BC.y * BC.y) || 1;
+                var r = Math.min(radiusMeters, lenBA * 0.45, lenBC * 0.45);
+                var p1 = { x: B.x + BA.x / lenBA * r, y: B.y + BA.y / lenBA * r };
+                var p2 = { x: B.x + BC.x / lenBC * r, y: B.y + BC.y / lenBC * r };
+                for (var s = 0; s <= steps; s++) {
+                    var t = s / steps, mt = 1 - t;
+                    out.push(toLL({
+                        x: mt * mt * p1.x + 2 * mt * t * B.x + t * t * p2.x,
+                        y: mt * mt * p1.y + 2 * mt * t * B.y + t * t * p2.y
+                    }));
+                }
+            }
+            return out;
+        }
+
+        // 按弧长把闭合路径均匀重采样成固定间距的点。
+        // 圆角化只在角点附近生成采样点，直道段会留下上百米的空档；
+        // 不重采样的话每圈取点会按数组下标走，距离完全不可控。
+        function ml_resampleClosedPath(path, spacingMeters) {
+            var n = path.length;
+            if (n < 2) { return path.slice(); }
+            var cum = [0];
+            for (var i = 0; i < n; i++) {
+                var j = (i + 1) % n;
+                cum.push(cum[i] + ml_haversineDistance(path[i].lat, path[i].lng, path[j].lat, path[j].lng));
+            }
+            var total = cum[n];
+            if (!(total > 0)) { return path.slice(); }
+            var count = Math.max(3, Math.round(total / spacingMeters));
+            var step = total / count;
+            var out = [];
+            var seg = 0;
+            for (var k = 0; k < count; k++) {
+                var target = k * step;
+                while (seg < n - 1 && cum[seg + 1] < target) { seg++; }
+                var segLen = cum[seg + 1] - cum[seg];
+                var t = segLen > 0 ? (target - cum[seg]) / segLen : 0;
+                var a = path[seg], b = path[(seg + 1) % n];
+                out.push({ lat: a.lat + t * (b.lat - a.lat), lng: a.lng + t * (b.lng - a.lng) });
+            }
+            return out;
+        }
+
         ml_boundary_cache = {};
 
         ml_boundary_name_map = {
@@ -7353,9 +7448,11 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             }
             if (!polygon || polygon.length < 3) throw new Error("场地边界无效");
 
-            // ---- 核心策略: 在场地边界内生成平滑椭圆跑道轨迹 ----
-            // 服务端的 latlngs 只有 4-6 个粗角点，直接连线是一条折线，不像跑步轨迹。
-            // 田径场是椭圆跑道，这里用椭圆参数方程生成平滑轨迹，再沿椭圆跑圈凑够目标距离。
+            // ---- 核心策略: 沿场地边界的平滑跑道跑圈 ----
+            // 服务端的 latlngs 只有 4-6 个粗角点，直接连线是折线。这里先对多边形做
+            // 圆角化：每个角点用二次贝塞尔过渡，得到贴合场地实际形状的平滑闭合路径。
+            // 矩形场地会自然生成「两个直道 + 两个半圆弧」的标准田径场形状，
+            // 比硬塞一个椭圆更符合地形。
             var bounds = ml_polygonBounds(polygon);
             var polyCenter = {
                 lat: (bounds.minLat + bounds.maxLat) / 2,
@@ -7363,45 +7460,42 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             };
             var latMeters = 111320;
             var lngMeters = 111320 * Math.cos(polyCenter.lat * Math.PI / 180);
-            var widthM = (bounds.maxLng - bounds.minLng) * lngMeters;   // 东西跨度(米)
-            var heightM = (bounds.maxLat - bounds.minLat) * latMeters;  // 南北跨度(米)
+            var widthM = (bounds.maxLng - bounds.minLng) * lngMeters;
+            var heightM = (bounds.maxLat - bounds.minLat) * latMeters;
+            // 弯道半径取短边的一半，但不超过 45m（真实田径场弯道约 36m 量级）
+            var cornerRadiusM = Math.min(Math.min(widthM, heightM) / 2, 45);
+            // 圆角化后按 6m 间距重采样，让整圈点分布均匀（直道段也要有点）
+            var lapPath = ml_resampleClosedPath(
+                ml_roundPolygon(polygon, cornerRadiusM, latMeters, lngMeters), 6);
 
-            // 椭圆半轴(米)：长轴沿场地较长方向，短轴按田径场比例，留出边距
-            var majorAxisM = Math.max(widthM, heightM) / 2 * 0.80;
-            var minorAxisM = Math.min(widthM, heightM) / 2 * 0.80;
-            // 田径场椭圆长宽比约 1.5:1，太方时拉长，但不能超出边界框
-            var maxMajorM = Math.max(widthM, heightM) / 2 * 0.90;
-            if (majorAxisM < minorAxisM * 1.5) {
-                majorAxisM = Math.min(minorAxisM * 1.5, maxMajorM);
+            // 单圈周长
+            var lapPerimeter = 0;
+            for (var i = 0; i < lapPath.length; i++) {
+                var j = (i + 1) % lapPath.length;
+                lapPerimeter += ml_haversineDistance(lapPath[i].lat, lapPath[i].lng, lapPath[j].lat, lapPath[j].lng);
             }
-            var majorAlongLng = widthM >= heightM;   // 东西更长时，长轴沿经度方向
-
-            // 椭圆周长（拉马努金近似）
-            var ellipsePerim = Math.PI * (3 * (majorAxisM + minorAxisM) -
-                Math.sqrt((3 * majorAxisM + minorAxisM) * (majorAxisM + 3 * minorAxisM)));
 
             // 每圈采样点数(间距约 6m)；圈数 = 目标距离 / 每圈周长
-            var ptsPerLap = Math.max(40, Math.round(ellipsePerim / 6));
-            var numLaps = Math.max(1, Math.ceil(targetDistanceM / ellipsePerim));
-            numLaps = Math.min(numLaps, 6); // 最多 6 圈
+            var ptsPerLap = Math.max(30, Math.round(lapPerimeter / 6));
+            var numLaps = Math.max(1, Math.ceil(targetDistanceM / lapPerimeter));
+            numLaps = Math.min(numLaps, 8); // 最多 8 圈
 
-            // 生成轨迹：绕椭圆跑 numLaps 圈。每圈椭圆大小略有差异、起点略有偏移，
-            // 模拟人每圈路线不会完全重合。这里生成的是平滑椭圆点，不加逐点噪声——
-            // 逐点独立抖动会把轨迹变成锯齿，不像真实 GPS；真实误差在重采样后统一
-            // 用平滑随机游走叠加。
+            // 生成轨迹：沿平滑跑道跑 numLaps 圈。每圈缩放与起点略有差异，
+            // 模拟人每圈路线不会完全重合；逐点独立抖动会让轨迹变锯齿，不加。
             var track = [];
             for (var lap = 0; lap < numLaps; lap++) {
-                var lapScale = 0.96 + Math.random() * 0.08;   // 每圈缩放 0.96~1.04
-                var phaseJitter = Math.random() * 0.15;       // 每圈起点偏移
+                var lapScale = 0.97 + Math.random() * 0.05;   // 每圈缩放 0.97~1.02
+                var lapOffset = Math.random() * 0.12;         // 每圈起点偏移
                 for (var p = 0; p < ptsPerLap; p++) {
-                    var theta = (p / ptsPerLap) * 2 * Math.PI + phaseJitter;
-                    var xM = majorAxisM * lapScale * Math.cos(theta);   // 沿长轴
-                    var yM = minorAxisM * lapScale * Math.sin(theta);   // 沿短轴
-                    var dLat, dLng;
-                    if (majorAlongLng) { dLng = xM / lngMeters; dLat = yM / latMeters; }
-                    else { dLat = xM / latMeters; dLng = yM / lngMeters; }
-                    var lat = polyCenter.lat + dLat;
-                    var lng = polyCenter.lng + dLng;
+                    var src = lapPath[(p + Math.round(lapOffset * ptsPerLap)) % lapPath.length];
+                    var lat = polyCenter.lat + (src.lat - polyCenter.lat) * lapScale;
+                    var lng = polyCenter.lng + (src.lng - polyCenter.lng) * lapScale;
+                    // 边界验证：圆角化在凸角内收，但凹多边形仍可能外溢
+                    if (!ml_isPointInPolygon(lat, lng, polygon)) {
+                        var clamped = ml_movePointInsidePolygon(lat, lng, polygon, polyCenter);
+                        lat = clamped.lat;
+                        lng = clamped.lng;
+                    }
                     track.push({ lat: lat, lng: lng, sortNum: track.length + 1 });
                 }
             }
@@ -7758,8 +7852,247 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             };
         }
 
-        async function ml_regenerateCurrentTrack() {
-            var planId = ml_choose_route_data.plan_id;
+        /*
+        ML Remark: 实时跑操
+        和「模拟」模式的区别是时间戳来自真实时钟：
+          开始 = 点按钮那一刻，立刻调 saveStartRecord，服务端建行时间就是真实开始时间
+          结束 = 再点按钮那一刻，调 saveRecord，用时取真实流逝秒数
+        所以服务端的 create_time 与记录里的起止时间完全对齐。
+        轨迹仍然在场地内生成（电脑没有 GPS），距离由真实时长反推：
+          distance = 已跑分钟 / pace，pace 取规则区间内、且满足 distance >= standardKm 的值。
+        代价：中途放弃会在服务端留下一条「进行中」的记录，接口没有删除能力。
+        */
+        var ml_live_state = { running: false, startTime: null, recordId: "", startImageUrl: "", elapsed: 0, timer: null };
+
+        function ml_live_hhmmss(d) {
+            return String(d.getHours()).padStart(2, '0') + ":" +
+                String(d.getMinutes()).padStart(2, '0') + ":" +
+                String(d.getSeconds()).padStart(2, '0');
+        }
+
+        function ml_live_fmt(sec) {
+            sec = Math.max(0, Math.floor(sec));
+            return Math.floor(sec / 60) + " 分 " + String(sec % 60).padStart(2, '0') + " 秒";
+        }
+
+        // 由真实已跑时长反推可达标的上限配速；paceMax < minPace 说明跑得还不够远
+        function ml_live_metrics(elapsedSec) {
+            var r = ml_choose_route_data || {};
+            var minTimeSec = (Number(r.min_time) || 4) * 60;
+            var maxTimeSec = (Number(r.max_time) || 12) * 60;
+            var minPace = Number(r.min_pace) || 3.3333;
+            var maxPace = Number(r.max_pace) || 10;
+            var stdKm = Number(r.route_distance_km) || 1.2;
+            var paceMax = Math.min(maxPace, (elapsedSec / 60) / stdKm);
+            return {
+                minTimeSec: minTimeSec, maxTimeSec: maxTimeSec,
+                minPace: minPace, maxPace: maxPace, stdKm: stdKm, paceMax: paceMax,
+                timeOk: elapsedSec >= minTimeSec && elapsedSec <= maxTimeSec,
+                distanceOk: paceMax >= minPace,
+                overtime: elapsedSec > maxTimeSec
+            };
+        }
+
+        function ml_live_render() {
+            var status = document.getElementById("live-status");
+            var list = document.getElementById("live-metrics");
+            if (!status || !list || !ml_live_state.running) { return; }
+            var elapsed = ml_live_state.elapsed;
+            var m = ml_live_metrics(elapsed);
+            var pct = Math.min(100, Math.round(elapsed / m.minTimeSec * 100));
+            var bar = document.getElementById("live-progress-bar");
+            if (bar) { bar.style.width = pct + "%"; bar.textContent = pct + "%"; }
+
+            if (m.overtime) {
+                status.textContent = "⚠️ 已超过规则上限 " + Math.round(m.maxTimeSec / 60) + " 分钟，建议尽快结束。";
+            } else if (m.timeOk && m.distanceOk) {
+                status.textContent = "✅ 已达到规则要求，可以点「结束跑操」。";
+            } else {
+                status.textContent = "正在跑，还需 " + ml_live_fmt(m.minTimeSec - elapsed) + " 才达标。";
+            }
+
+            list.innerHTML = "";
+            [["已跑时间", ml_live_fmt(elapsed)],
+             ["当前可记距离", ((elapsed / 60) / m.minPace).toFixed(2) + " km"],
+             ["规则要求", "不少于 " + Math.round(m.minTimeSec / 60) + " 分钟 / " + m.stdKm + " km"]
+            ].forEach(function(row) {
+                var li = document.createElement("li");
+                li.textContent = row[0] + "：" + row[1];
+                list.appendChild(li);
+            });
+
+            var btnFinish = document.getElementById("btn-live-finish");
+            if (btnFinish) { btnFinish.disabled = !((m.timeOk && m.distanceOk) || m.overtime); }
+        }
+
+        function ml_live_stop() {
+            if (ml_live_state.timer) { clearInterval(ml_live_state.timer); }
+            ml_live_state = { running: false, startTime: null, recordId: "", startImageUrl: "", elapsed: 0, timer: null };
+            var b1 = document.getElementById("btn-live-start");
+            var b2 = document.getElementById("btn-live-finish");
+            var b3 = document.getElementById("btn-live-abort");
+            if (b1) { b1.disabled = false; b1.textContent = "开始跑操"; }
+            if (b2) { b2.disabled = true; b2.textContent = "结束跑操"; }
+            if (b3) { b3.disabled = true; }
+        }
+
+        function ml_live_record_payload(extra) {
+            var route = ml_choose_route_data || {};
+            var base = {
+                "routeName": route.route_name,
+                "ruleId": route.rule_id,
+                "planId": route.plan_id,
+                "routeRule": route.route_rule,
+                "maxTime": route.max_time,
+                "minTime": route.min_time,
+                "orouteKilometre": route.route_distance_km,
+                "ruleEndTime": route.rule_end_time,
+                "ruleStartTime": route.rule_start_time,
+                "userId": ml_student_user_id,
+                "studentId": ml_student_user_id
+            };
+            for (var k in extra) { if (extra.hasOwnProperty(k)) { base[k] = extra[k]; } }
+            return base;
+        }
+
+        async function ml_live_start() {
+            if (ml_live_state.running) { return; }
+            if (!ml_student_token) { ml_show_Alert("无法开始", "请先填入 Token。"); return; }
+            if (!ml_choose_route_data || !ml_choose_route_data.plan_id) {
+                ml_show_Alert("无法开始", "请先填入 Token 加载场地。"); return;
+            }
+            var startPhoto = document.getElementById("input-image_start");
+            if (!startPhoto || !startPhoto.files || !startPhoto.files.length) {
+                ml_show_Alert("无法开始", "请先上传开始照片。"); return;
+            }
+            if (!confirm("点开始会立刻上传一条开始记录，服务端记下的就是现在这个时间。\n\n" +
+                "跑操期间请不要关闭或刷新页面。中途放弃会在账号里留下一条进行中的记录" +
+                "（接口没有删除能力，但不影响有效次数）。\n\n现在开始？")) { return; }
+
+            var btn = document.getElementById("btn-live-start");
+            var status = document.getElementById("live-status");
+            btn.disabled = true;
+            btn.textContent = "正在开始…";
+            try {
+                status.textContent = "正在上传开始照片…";
+                ml_live_state.startImageUrl = await ml_upload_image(1);
+                var now = new Date();
+                var payload = ml_live_record_payload({
+                    "id": "",
+                    "recordTime": ml_format_exercise_date(now),
+                    "startTime": ml_live_hhmmss(now),
+                    "startImage": ml_live_state.startImageUrl,
+                    "endTime": "", "exerciseTimes": "", "routeKilometre": "", "endImage": "",
+                    "calorie": 0, "speed": "0'00''", "dispTimeText": 0, "nowStatus": 0
+                });
+                status.textContent = "正在上传开始记录…";
+                var resp = await ml_encrypted_post(ml_exercise_record_api + "/saveStartRecord", payload, "上传运动开始记录");
+                var recId = resp && resp.data;
+                if (recId && typeof recId === "object") { recId = recId.id || recId.recordId || ""; }
+                if (!recId) { throw new Error("开始记录已上传，但接口没返回记录 ID"); }
+
+                ml_live_state.recordId = recId;
+                ml_live_state.startTime = now;
+                ml_live_state.elapsed = 0;
+                ml_live_state.running = true;
+                ml_live_state.timer = setInterval(function() {
+                    ml_live_state.elapsed = Math.floor((Date.now() - ml_live_state.startTime.getTime()) / 1000);
+                    ml_live_render();
+                }, 1000);
+                document.getElementById("btn-live-finish").disabled = true;
+                document.getElementById("btn-live-abort").disabled = false;
+                btn.textContent = "跑操中…";
+                ml_live_render();
+                ml_show_Alert("已开始跑操", "开始记录已上传（" + ml_live_hhmmss(now) + "）。\n\n" +
+                    "去跑吧，跑够 " + Math.round(ml_live_metrics(0).minTimeSec / 60) + " 分钟后回来点「结束跑操」。");
+            } catch (e) {
+                console.error("实时跑操开始失败:", e);
+                ml_live_stop();
+                status.textContent = "开始失败：" + (e && e.message ? e.message : e);
+                ml_show_Alert("开始失败", "❌ " + (e && e.message ? e.message : e));
+            }
+        }
+
+        async function ml_live_finish() {
+            if (!ml_live_state.running) { return; }
+            var endPhoto = document.getElementById("input-image_end");
+            if (!endPhoto || !endPhoto.files || !endPhoto.files.length) {
+                ml_show_Alert("还不能结束", "请先上传结束照片。"); return;
+            }
+            var endTime = new Date();
+            var elapsed = Math.floor((endTime.getTime() - ml_live_state.startTime.getTime()) / 1000);
+            var m = ml_live_metrics(elapsed);
+            if (!m.overtime && !m.timeOk) {
+                ml_show_Alert("还不能结束", "已跑 " + ml_live_fmt(elapsed) + "，还差 " +
+                    ml_live_fmt(m.minTimeSec - elapsed) + " 才达标。"); return;
+            }
+            if (!m.overtime && !m.distanceOk) {
+                ml_show_Alert("还不能结束", "按当前用时算距离达不到 " + m.stdKm + " km，再跑一会儿。"); return;
+            }
+
+            var btn = document.getElementById("btn-live-finish");
+            var status = document.getElementById("live-status");
+            btn.disabled = true;
+            btn.textContent = "正在提交…";
+            try {
+                status.textContent = "正在上传结束照片…";
+                var endImageUrl = await ml_upload_image(2);
+
+                // 用真实时长反推配速与距离：paceMax 保证 distance >= 标准里程
+                var elapsedMin = elapsed / 60;
+                var paceMax = Math.min(m.maxPace, elapsedMin / m.stdKm);
+                var pace = m.minPace + Math.random() * Math.max(0, paceMax - m.minPace);
+                var distanceKm = elapsedMin / pace;
+                status.textContent = "正在生成轨迹…";
+                var trackResult = await ml_getRandomTrackForVenue(ml_choose_route_data.plan_id, {
+                    targetDistanceM: distanceKm * 1000,
+                    paceSecondsPerKm: pace * 60
+                });
+                var paceMin = Math.floor(pace);
+                var paceSec = Math.round((pace - paceMin) * 60);
+                var payload = ml_live_record_payload({
+                    "id": ml_live_state.recordId,
+                    "recordTime": ml_format_exercise_date(ml_live_state.startTime),
+                    "startTime": ml_live_hhmmss(ml_live_state.startTime),
+                    "startImage": ml_live_state.startImageUrl,
+                    "endTime": ml_live_hhmmss(endTime),
+                    "exerciseTimes": elapsed,
+                    "routeKilometre": Math.round(distanceKm * 100) / 100,
+                    "endImage": endImageUrl,
+                    "strLatitudeLongitude": JSON.stringify(trackResult.track),
+                    "calorie": Math.round(distanceKm * 62),
+                    "speed": paceMin + "'" + String(paceSec).padStart(2, '0') + "''",
+                    "dispTimeText": ml_live_fmt(elapsed),
+                    "nowStatus": 2
+                });
+                status.textContent = "正在上传结束记录…";
+                await ml_encrypted_post(ml_exercise_record_api + "/saveRecord", payload, "上传运动结束记录");
+                ml_live_stop();
+                ml_renderTrackPreview(trackResult.track, trackResult.metadata);
+                status.textContent = "✅ 本次跑操已提交：" + ml_live_fmt(elapsed) + " / " + distanceKm.toFixed(2) + " km";
+                ml_show_Alert("跑操完成", "✅ 已提交\n\n用时 " + ml_live_fmt(elapsed) +
+                    "\n距离 " + distanceKm.toFixed(2) + " km");
+            } catch (e) {
+                console.error("实时跑操提交失败:", e);
+                btn.disabled = false;
+                btn.textContent = "结束跑操";
+                status.textContent = "提交失败：" + (e && e.message ? e.message : e);
+                ml_show_Alert("提交失败", "❌ " + (e && e.message ? e.message : e) +
+                    "\n\n计时已停止但记录还没提交，可以再点一次「结束跑操」重试。");
+                ml_live_state.running = true;  // 允许重试
+            }
+        }
+
+        function ml_live_abort() {
+            if (!ml_live_state.running) { return; }
+            if (!confirm("放弃本次跑操？\n\n已经上传的开始记录删不掉，会留在账号里显示为未完成/无效" +
+                "（不影响有效次数）。")) { return; }
+            ml_live_stop();
+            document.getElementById("live-status").textContent =
+                "已放弃本次跑操。账号里可能留下一条未完成的记录，可在「我的锻炼记录」里查看。";
+        }
+
+        async function ml_regenerateCurrentTrack() {            var planId = ml_choose_route_data.plan_id;
             var result = await ml_getRandomTrackForVenue(planId);
             ml_student_choose_route_data = result;
             console.log("随机轨迹已生成:", result.metadata);
@@ -9866,6 +10199,15 @@ function ml_distanceToPolygon(lat, lng, polygon) {
             })();
             // 禁止提前跑：限制三个日期控件不能选未来
             ml_apply_date_max_limits();
+
+            // 实时跑操按钮
+            var liveStartBtn = document.getElementById('btn-live-start');
+            var liveFinishBtn = document.getElementById('btn-live-finish');
+            var liveAbortBtn = document.getElementById('btn-live-abort');
+            if (liveStartBtn) { liveStartBtn.addEventListener('click', function() { ml_live_start(); }); }
+            if (liveFinishBtn) { liveFinishBtn.addEventListener('click', function() { ml_live_finish(); }); }
+            if (liveAbortBtn) { liveAbortBtn.addEventListener('click', function() { ml_live_abort(); }); }
+
             ml_updateHeroFlowState();
 
             var consistencyDetails = document.getElementById('consistency-details');
